@@ -39,7 +39,7 @@ namespace TouchdownAlertFunction
         //public void RunSunday([TimerTrigger("*/10 * 11 * 4 5")] TimerInfo myTimer, ILogger log)
         public void RunSunday([TimerTrigger("*/10 * 13-23 * 9-1 0")] TimerInfo myTimer, ILogger log)
         {
-            log.LogInformation("C# HTTP trigger function processed a request at " + DateTime.Now);
+            log.LogInformation("C# HTTP trigger function processed a request for Sunday games at " + DateTime.Now);
 
             // TODO: The following things need to happen, in this order:
             // 1 - Check the redis cache for data (data should expire after monday night games)
@@ -77,7 +77,7 @@ namespace TouchdownAlertFunction
         public void RunThursday([TimerTrigger("*/10 20 20-23 * 9-12 4")] TimerInfo myTimer, ILogger log)
         //public void RunThursday([TimerTrigger("*/10 12-15 12-13 * 4 5")] TimerInfo myTimer, ILogger log)
         {
-            log.LogInformation("C# HTTP trigger function processed a request at " + DateTime.Now);
+            log.LogInformation("C# HTTP trigger function processed a request for Thursday games at " + DateTime.Now);
 
             //parseTouchdowns();
 
@@ -109,7 +109,7 @@ namespace TouchdownAlertFunction
         public void RunMonday([TimerTrigger("*/10 15 20-23 * 9-1 1")] TimerInfo myTimer, ILogger log)
         //public void RunMonday([TimerTrigger("*/30 * 11 * 4 5")] TimerInfo myTimer, ILogger log)
         {
-            log.LogInformation("C# HTTP trigger function processed a request at " + DateTime.Now);
+            log.LogInformation("C# HTTP trigger function processed a request for Monday games at " + DateTime.Now);
 
             //parseTouchdowns();
 
