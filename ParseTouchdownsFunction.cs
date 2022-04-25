@@ -19,9 +19,9 @@ namespace TouchdownAlertFunction
 
         public TouchdownAlert()
         {
-            _playByPlayDoc.Load("C:\\fantasy Football\\playbyplay.json");
+            //_playByPlayDoc.Load("C:\\fantasy Football\\playbyplay.json");
             //playByPlayJsonObject = GetPlayByPlayJsonObject();
-            _playByPlayJsonObject = JObject.Parse(_playByPlayDoc.Text);
+            //_playByPlayJsonObject = JObject.Parse(_playByPlayDoc.Text);
         }
 
         // http://crontab.cronhub.io/?msclkid=5dd54af5c24911ecad1f7dea98c7030e to verify timer triggers
@@ -47,7 +47,7 @@ namespace TouchdownAlertFunction
             //   1b - if data is expired, query currentroster table to get roster and store relevant information in cache and have it expire after monday's game
 
             
-            parseTouchdowns();
+            //parseTouchdowns();
 
             sendTouchdownMessage();
             //string name = req.Query["name"];
@@ -79,7 +79,7 @@ namespace TouchdownAlertFunction
         {
             log.LogInformation("C# HTTP trigger function processed a request at " + DateTime.Now);
 
-            parseTouchdowns();
+            //parseTouchdowns();
 
             sendTouchdownMessage();
             //string name = req.Query["name"];
@@ -111,7 +111,7 @@ namespace TouchdownAlertFunction
         {
             log.LogInformation("C# HTTP trigger function processed a request at " + DateTime.Now);
 
-            parseTouchdowns();
+            //parseTouchdowns();
 
             sendTouchdownMessage();
             //string name = req.Query["name"];
