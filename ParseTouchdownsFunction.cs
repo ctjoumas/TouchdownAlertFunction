@@ -1,5 +1,7 @@
 namespace TouchdownAlertFunction
 {
+    using Azure.Core;
+    using Azure.Identity;
     using Azure.Messaging.ServiceBus;
     using HtmlAgilityPack;
     using Microsoft.AspNetCore.Http;
@@ -7,21 +9,28 @@ namespace TouchdownAlertFunction
     using Microsoft.Azure.WebJobs;
     using Microsoft.Azure.WebJobs.Extensions.Http;
     using Microsoft.Extensions.Logging;
+    using Newtonsoft.Json;
     using Newtonsoft.Json.Linq;
     using System;
+    using System.Collections;
+    using System.Data.SqlClient;
     using System.Text.Json;
     using System.Threading.Tasks;
 
     public class TouchdownAlert
     {
-        private HtmlDocument _playByPlayDoc = new HtmlDocument();
-        private JObject _playByPlayJsonObject;
+        /// <summary>
+        /// Session key for the Azure SQL Access token
+        /// </summary>
+        public const string SessionKeyAzureSqlAccessToken = "_Token";
+
+        /// <summary>
+        /// Root of the play by play URL where we will get the play by play json object
+        /// </summary>
+        private const string PLAY_BY_PLAY_URL = "https://www.espn.com/nfl/playbyplay/_/gameId/";
 
         public TouchdownAlert()
         {
-            //_playByPlayDoc.Load("C:\\fantasy Football\\playbyplay.json");
-            //playByPlayJsonObject = GetPlayByPlayJsonObject();
-            //_playByPlayJsonObject = JObject.Parse(_playByPlayDoc.Text);
         }
 
         // http://crontab.cronhub.io/?msclkid=5dd54af5c24911ecad1f7dea98c7030e to verify timer triggers
@@ -36,31 +45,14 @@ namespace TouchdownAlertFunction
         // {month} 9-1 is Sept-Jan
         // {day of week} 0 is Sunday
         [FunctionName("ParseTouchdownsSunday")]
-        //public void RunSunday([TimerTrigger("*/10 * 11 * 4 5")] TimerInfo myTimer, ILogger log)
+        //public void RunSunday([TimerTrigger("*/10 * 8-18 * 5 1")] TimerInfo myTimer, ILogger log)
         public void RunSunday([TimerTrigger("*/10 * 13-23 * 9-1 0")] TimerInfo myTimer, ILogger log)
         {
             log.LogInformation("C# HTTP trigger function processed a request for Sunday games at " + DateTime.Now);
 
-            // TODO: The following things need to happen, in this order:
-            // 1 - Check the redis cache for data (data should expire after monday night games)
-            //   1a - if data isn't expired, store data into hashtables like the parser in the main app, and use this to check players against TDs parsed
-            //   1b - if data is expired, query currentroster table to get roster and store relevant information in cache and have it expire after monday's game
+            Hashtable gamesToParse = getGamesToParse(log);
 
-            
-            //parseTouchdowns();
-
-            sendTouchdownMessage();
-            //string name = req.Query["name"];
-
-            //string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
-            //dynamic data = JsonConvert.DeserializeObject(requestBody);
-            //name = name ?? data?.name;
-
-            //string responseMessage = string.IsNullOrEmpty(name)
-            //    ? "This HTTP triggered function executed successfully. Pass a name in the query string or in the request body for a personalized response."
-            //    : $"Hello, {name}. This HTTP triggered function executed successfully.";
-
-            //return Task.FromResult<IActionResult>(new OkResult());
+            parseTouchdowns(gamesToParse, log);
         }
 
         // The timer trigger should run every 10 seconds on Thursdays from 8-11:59pm, Sept-Jan
@@ -75,24 +67,12 @@ namespace TouchdownAlertFunction
         // {day of week} 4 is Thursday
         [FunctionName("ParseTouchdownsThursday")]
         public void RunThursday([TimerTrigger("*/10 20 20-23 * 9-12 4")] TimerInfo myTimer, ILogger log)
-        //public void RunThursday([TimerTrigger("*/10 12-15 12-13 * 4 5")] TimerInfo myTimer, ILogger log)
         {
             log.LogInformation("C# HTTP trigger function processed a request for Thursday games at " + DateTime.Now);
 
-            //parseTouchdowns();
+            Hashtable gamesToParse = getGamesToParse(log);
 
-            sendTouchdownMessage();
-            //string name = req.Query["name"];
-
-            //string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
-            //dynamic data = JsonConvert.DeserializeObject(requestBody);
-            //name = name ?? data?.name;
-
-            //string responseMessage = string.IsNullOrEmpty(name)
-            //    ? "This HTTP triggered function executed successfully. Pass a name in the query string or in the request body for a personalized response."
-            //    : $"Hello, {name}. This HTTP triggered function executed successfully.";
-
-            //return Task.FromResult<IActionResult>(new OkResult());
+            parseTouchdowns(gamesToParse, log);
         }
 
         // The timer trigger should run every 10 seconds on Mondays from 8pm-11:59pm, Sept-Jan
@@ -107,36 +87,137 @@ namespace TouchdownAlertFunction
         // {day of week} 1 is Monday
         [FunctionName("ParseTouchdownsMonday")]
         public void RunMonday([TimerTrigger("*/10 15 20-23 * 9-1 1")] TimerInfo myTimer, ILogger log)
-        //public void RunMonday([TimerTrigger("*/30 * 11 * 4 5")] TimerInfo myTimer, ILogger log)
         {
             log.LogInformation("C# HTTP trigger function processed a request for Monday games at " + DateTime.Now);
 
-            //parseTouchdowns();
+            Hashtable gamesToParse = getGamesToParse(log);
 
-            sendTouchdownMessage();
-            //string name = req.Query["name"];
+            parseTouchdowns(gamesToParse, log);
+        }
 
-            //string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
-            //dynamic data = JsonConvert.DeserializeObject(requestBody);
-            //name = name ?? data?.name;
+        /// <summary>
+        /// Gets the rosters for the latest/current week from the CurrentRoster table and stores it
+        /// in a hashtable where the key is the ESPN Game ID and the value are all players playing
+        /// in that game.
+        /// </summary>
+        /// <param name="log">Logger</param>
+        /// <returns>Hashtable of games for each player from the current weeks roster</returns>
+        private Hashtable getGamesToParse(ILogger log)
+        {
+            Hashtable gamesToParse = new Hashtable();
 
-            //string responseMessage = string.IsNullOrEmpty(name)
-            //    ? "This HTTP triggered function executed successfully. Pass a name in the query string or in the request body for a personalized response."
-            //    : $"Hello, {name}. This HTTP triggered function executed successfully.";
+            var connectionStringBuilder = new SqlConnectionStringBuilder
+            {
+                DataSource = "tcp:playersandscheduledetails.database.windows.net,1433",
+                InitialCatalog = "PlayersAndSchedulesDetails",
+                TrustServerCertificate = false,
+                Encrypt = true
+            };
 
-            //return Task.FromResult<IActionResult>(new OkResult());
+            SqlConnection sqlConnection = new SqlConnection(connectionStringBuilder.ConnectionString);
+
+            try
+            {
+                string azureSqlToken = GetAzureSqlAccessToken();
+                sqlConnection.AccessToken = azureSqlToken;
+            }
+            catch (Exception e)
+            {
+                log.LogInformation(e.Message);
+            }
+
+            using (sqlConnection)
+            {
+                sqlConnection.Open();
+
+                // call stored procedure to get all players for each team's roster for this week
+                using (SqlCommand command = new SqlCommand("GetTeamsForCurrentWeek", sqlConnection))
+                {
+                    command.CommandType = System.Data.CommandType.StoredProcedure;
+
+                    using (SqlDataReader reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            string ownerName = reader.GetValue(reader.GetOrdinal("OwnerName")).ToString();
+                            string ownerPhoneNumber = reader.GetValue(reader.GetOrdinal("PhoneNumber")).ToString();
+                            string playerName = reader.GetValue(reader.GetOrdinal("PlayerName")).ToString();
+                            string espnGameId = reader.GetValue(reader.GetOrdinal("EspnGameId")).ToString();
+
+                            TouchdownDetails touchdownDetails = new TouchdownDetails();
+                            touchdownDetails.OwnerName = ownerName;
+                            touchdownDetails.PhoneNumber = ownerPhoneNumber;
+                            touchdownDetails.PlayerName = playerName;
+
+                            // it's more expensive to use the ContainsKey method on a hashtable, so just pull out
+                            // the value and check if it's null
+                            ArrayList playerList = (ArrayList)gamesToParse[espnGameId];
+
+                            // if it's not null, the game exists in the hashtable, so let's remove the item so we can add the
+                            // touchdown details for this player to the list and re-add the key/value pair with this new player's
+                            // touchdown details. Oherwise, we will create an empty ArrayList for the players touchdown details so
+                            // we can add the touchdown details and put the new game key/value pair into the hashtable
+                            if (playerList != null)
+                            {
+                                gamesToParse.Remove(espnGameId);
+                            }
+                            else
+                            {
+                                playerList = new ArrayList();
+                            }
+
+                            playerList.Add(touchdownDetails);
+                            gamesToParse.Add(espnGameId, playerList);
+
+                            log.LogInformation("player name: " + playerName + "(" + ownerPhoneNumber + ")");
+                        }
+                    }
+                }
+
+                sqlConnection.Close();
+            }
+
+            return gamesToParse;
+        }
+
+        /// <summary>
+        /// Parses touchdowns for each game that each player in the active rosters for both owners are playing in.
+        /// </summary>
+        /// <param name="gamesToParse">Key is the Espn Game ID and the value is the list of players playing in the game</param>
+        /// <param name="log">Logger</param>
+        public void parseTouchdowns(Hashtable gamesToParse, ILogger log)
+        {
+            JObject playByPlayJsonObject;
+
+            // go through each key (game id) in the hashtable and parse these games' JSON play
+            // by play checking for each player (value, which is a list of players) playing in
+            // that game
+            foreach (var key in gamesToParse.Keys)
+            {
+                string playByPlayUrl = PLAY_BY_PLAY_URL + key;
+                HtmlDocument playByPlayDoc = new HtmlWeb().Load(playByPlayUrl);
+
+                // get the play by play JSON object for this game
+                playByPlayJsonObject = GetPlayByPlayJsonObject(playByPlayDoc);
+
+                ArrayList playersInGame = (ArrayList)gamesToParse[key];
+
+                //ParsePlayersForGame(playByPlayJsonObject, playersInGame);
+                ParsePlayersForGame(int.Parse((string)key), playByPlayJsonObject, playersInGame, log);
+            }
         }
 
         /// <summary>
         /// When a game is in progress, the play by play data is updated in the javascript function's espn.gamepackage.data variable.
         /// This method will find this variable and pull out the JSON and store it so we can parse the live play by play data.
         /// </summary>
+        /// <param name="playByPlayDoc">The play by play document for a particular game</param>
         /// <returns>The JSON object representing the play by play data.</returns>
-        public JObject GetPlayByPlayJsonObject()
+        public JObject GetPlayByPlayJsonObject(HtmlDocument playByPlayDoc)
         {
             JObject playByPlayJsonObject = null;
 
-            var playByPlayJavaScriptNode = _playByPlayDoc.DocumentNode.SelectNodes("//script[@type='text/javascript']");
+            var playByPlayJavaScriptNode = playByPlayDoc.DocumentNode.SelectNodes("//script[@type='text/javascript']");
 
             foreach (var scriptNode in playByPlayJavaScriptNode)
             {
@@ -167,12 +248,20 @@ namespace TouchdownAlertFunction
             }
 
             return playByPlayJsonObject;
-        }
+        }            
 
-        public void parseTouchdowns()
+        /// <summary>
+        /// Parses the JSON object for the given game to see if any of the players playing in this
+        /// game have scored a touchdown. If the touchdown has not yet been texted to the owner, based
+        /// on game clock stored as last parsed touchdown in the database, an alert will be sent to
+        /// the owner.
+        /// </summary>
+        /// <param name="playByPlayJsonObject"></param>
+        /// <param name="playersInGame"></param>
+        private async void ParsePlayersForGame(int espnGameId, JObject playByPlayJsonObject, ArrayList playersInGame, ILogger log)
         {
             // each play token is a drive, so we will go through this to parse all player stats
-            JToken driveTokens = _playByPlayJsonObject.SelectToken("drives.previous");
+            JToken driveTokens = playByPlayJsonObject.SelectToken("drives.previous");
 
             // if the game started and there are no drives yet
             if (driveTokens != null)
@@ -198,19 +287,59 @@ namespace TouchdownAlertFunction
                             // get the details of the touchdown
                             // we will cache the quarter and game clock so the next time we check the live JSON data, we don't
                             // send a message to the service bus that the same touchdown was scored
-                            string quarter = playToken.SelectToken("period.number").ToString();
+                            int quarter = int.Parse(playToken.SelectToken("period.number").ToString());
                             string gameClock = (string)((JValue)playToken.SelectToken("clock.displayValue")).Value;
 
                             // the player name is displayed here, but it's usually first initial.lastname (G.Kittle), so we'd
                             // search for this player name in the players table for the current roster / matchup
                             string touchdownText = (string)((JValue)playToken.SelectToken("text")).Value;
+
+                            // check if any of players in the players list (current roster) have scored
+                            foreach (TouchdownDetails touchdownDetails in playersInGame)
+                            {
+                                // get the player name as first <initial>.<lastname> to check if this is the player
+                                // who scored a touchdown
+                                string abbreviatedPlayerName = touchdownDetails.PlayerName;
+                                int spaceIndex = abbreviatedPlayerName.IndexOf(' ');
+                                abbreviatedPlayerName = abbreviatedPlayerName[0] + "." + abbreviatedPlayerName.Substring(spaceIndex + 1);
+
+                                if (touchdownText.Contains(abbreviatedPlayerName) && (touchdownText.IndexOf("TOUCHDOWN") <= touchdownText.IndexOf(abbreviatedPlayerName)))
+                                {
+                                    log.LogInformation("Did NOT add TD for " + touchdownDetails.PlayerName + "; Player is a kicker.");
+                                }
+
+                                // We need to make sure that this player is the player who scored the TD and not the kicker kicking the XP. The
+                                // format of the text in the JSON Play By Play will be:
+                                // "text": "(5:30) (Shotgun) D.Samuel left end for 8 yards, TOUCHDOWN. R.Gould extra point is GOOD, Center-T.Pepper, Holder-M.Wishnowsky."
+                                // It should be enough to ensure the occurence of the player has to be before the occurence of the text "TOUCHDOWN"
+                                if (touchdownText.Contains(abbreviatedPlayerName) && (touchdownText.IndexOf("TOUCHDOWN") > touchdownText.IndexOf(abbreviatedPlayerName)))
+                                {
+                                    // if this touchdown scored by this player was not already parsed, the touchdown will be added
+                                    bool touchdownAdded = AddTouchdownDetails(espnGameId, quarter, gameClock, touchdownDetails.PlayerName, log);
+
+                                    if (touchdownAdded)
+                                    {
+                                        log.LogInformation("Added TD for " + touchdownDetails.PlayerName);
+                                        await sendTouchdownMessage(touchdownDetails);
+                                    }
+                                    else
+                                    {
+                                        log.LogInformation("Did NOT log TD for " + touchdownDetails.PlayerName + "; TD already parsed earlier.");
+                                    }
+                                }
+                            }
                         }
                     }
                 }
             }
         }
 
-        private async Task sendTouchdownMessage()
+        /// <summary>
+        /// Send the touchdown details as a message to the service bus' touchdown queue.
+        /// </summary>
+        /// <param name="touchdownDetails">The details of the particular touchdown</param>
+        /// <returns></returns>
+        private async Task sendTouchdownMessage(TouchdownDetails touchdownDetails)
         {
             // connection string to your Service Bus namespace
             string connectionString = "Endpoint=sb://fantasyfootballstattracker.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=dZmufQp1JtwggtAqRFqxzUbOf5mloeA4LJUapntE+wY=";
@@ -235,28 +364,11 @@ namespace TouchdownAlertFunction
             // create a batch 
             using ServiceBusMessageBatch messageBatch = await sender.CreateMessageBatchAsync();
 
-            for (int i = 1; i <= 3; i++)
-            {
-                TouchdownDetails touchdown = new TouchdownDetails();
-                touchdown.PlayerName = $"Player X";
-                touchdown.PhoneNumber = "703-463-6826";
-
-                string jsonTouchdown = JsonSerializer.Serialize(touchdown);
-
-                // try adding a message to the batch
-                //if (!messageBatch.TryAddMessage(new ServiceBusMessage($"Message {i}")))
-                if (!messageBatch.TryAddMessage(new ServiceBusMessage(jsonTouchdown)))
-                {
-                    // if it is too large for the batch
-                    //throw new Exception($"The message {i} is too large to fit in the batch.");
-                }
-            }
-
             try
             {
-                // Use the producer client to send the batch of messages to the Service Bus queue
-                await sender.SendMessagesAsync(messageBatch);
-                //Console.WriteLine($"A batch of 3 messages has been published to the queue.");
+                ServiceBusMessage message = new ServiceBusMessage(JsonConvert.SerializeObject(touchdownDetails));
+
+                await sender.SendMessageAsync(message);
             }
             finally
             {
@@ -265,6 +377,76 @@ namespace TouchdownAlertFunction
                 await sender.DisposeAsync();
                 await client.DisposeAsync();
             }
+        }
+                        
+        /// <summary>
+        /// Gets the SQL Access token so we can connect to the database
+        /// </summary>
+        /// <returns></returns>
+        private static string GetAzureSqlAccessToken()
+        {
+            // See https://docs.microsoft.com/en-us/azure/active-directory/managed-identities-azure-resources/services-support-managed-identities#azure-sql
+            var tokenRequestContext = new TokenRequestContext(new[] { "https://database.windows.net//.default" });
+            var tokenRequestResult = new DefaultAzureCredential().GetToken(tokenRequestContext);
+
+            return tokenRequestResult.Token;
+        }        
+        
+        /// <summary>
+        /// Updates the TouchdownDetails table with a particular occurence of a touchdown. This touchdown has not already been
+        /// parsed for this game.
+        /// </summary>
+        /// <param name="espnGameId">Live game ID</param>
+        /// <param name="touchdownQuarter">The quarter this touchdown occurs</param>
+        /// <param name="touchdownGameClock">The game clock when this touchdown occured</param>
+        /// <param name="playerName">The player who scored the touchdown</param>
+        /// <param name="log">The logger.</param>
+        /// <returns></returns>
+        private bool AddTouchdownDetails(int espnGameId, int touchdownQuarter, string touchdownGameClock, string playerName, ILogger log)
+        {
+            bool touchdownAdded = false;
+
+            var connectionStringBuilder = new SqlConnectionStringBuilder
+            {
+                DataSource = "tcp:playersandscheduledetails.database.windows.net,1433",
+                InitialCatalog = "PlayersAndSchedulesDetails",
+                TrustServerCertificate = false,
+                Encrypt = true
+            };
+
+            SqlConnection sqlConnection = new SqlConnection(connectionStringBuilder.ConnectionString);
+
+            try
+            {
+                string azureSqlToken = GetAzureSqlAccessToken();
+                sqlConnection.AccessToken = azureSqlToken;
+            }
+            catch (Exception e)
+            {
+                log.LogInformation(e.Message);
+            }
+
+            using (sqlConnection)
+            {
+                sqlConnection.Open();
+
+                // call stored procedure to add this touchdown for this player to the database if it hasn't already
+                // been added
+                using (SqlCommand command = new SqlCommand("AddTouchdownAlertDetails", sqlConnection))
+                {
+                    command.CommandType = System.Data.CommandType.StoredProcedure;
+                    command.Parameters.Add(new SqlParameter("@EspnGameId", System.Data.SqlDbType.Int) { Value = espnGameId });
+                    command.Parameters.Add(new SqlParameter("@TouchdownQuarter", System.Data.SqlDbType.Int) { Value = touchdownQuarter });
+                    command.Parameters.Add(new SqlParameter("@TouchdownGameClock", System.Data.SqlDbType.NVarChar) { Value = touchdownGameClock });
+                    command.Parameters.Add(new SqlParameter("@PlayerName", System.Data.SqlDbType.NVarChar) { Value = playerName });
+
+                    touchdownAdded = (bool) command.ExecuteScalar();
+                }
+
+                sqlConnection.Close();
+            }
+
+            return touchdownAdded;
         }
     }
 }
