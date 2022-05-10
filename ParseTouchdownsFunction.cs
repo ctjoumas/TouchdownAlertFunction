@@ -139,12 +139,16 @@ namespace TouchdownAlertFunction
                     {
                         while (reader.Read())
                         {
+                            int season = (int)reader.GetValue(reader.GetOrdinal("Season"));
+                            int ownerId = (int)reader.GetValue(reader.GetOrdinal("OwnerID"));
                             string ownerName = reader.GetValue(reader.GetOrdinal("OwnerName")).ToString();
                             string ownerPhoneNumber = reader.GetValue(reader.GetOrdinal("PhoneNumber")).ToString();
                             string playerName = reader.GetValue(reader.GetOrdinal("PlayerName")).ToString();
                             string espnGameId = reader.GetValue(reader.GetOrdinal("EspnGameId")).ToString();
 
                             TouchdownDetails touchdownDetails = new TouchdownDetails();
+                            touchdownDetails.Season = season;
+                            touchdownDetails.OwnerId = ownerId;
                             touchdownDetails.OwnerName = ownerName;
                             touchdownDetails.PhoneNumber = ownerPhoneNumber;
                             touchdownDetails.PlayerName = playerName;
