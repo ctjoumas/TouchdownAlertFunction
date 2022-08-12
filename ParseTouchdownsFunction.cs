@@ -75,6 +75,31 @@ namespace TouchdownAlertFunction
             parseTouchdowns(gamesToParse, log);
         }
 
+        // TESTING PRESEASON GAME
+        // ======================
+        // The timer trigger should run every 10 seconds on Thursdays from 8-11:59pm, Sept-Jan
+        // * * * * * *
+        // {second} {minute} {hour} {day of month} {month} {day of week}
+        // for the trigger - */10 * 13 * 9-1 0 - each component is:
+        // {second} */10 is every 10 seconds
+        // {minute} 20 is at 20 minutes past the hour (thursday night gmaes start at 8:20)
+        // {hour} 18-23 is 6pm-11:59pm
+        // {day of the month} * is every day
+        // {month} 8 is Aug
+        // {day of week} 5 is Friday
+        [FunctionName("ParseTouchdownsFriday")]
+        public void RunFriday([TimerTrigger("*/10 20 20-23 * 8 5")] TimerInfo myTimer, ILogger log)
+        {
+            log.LogInformation("C# HTTP trigger function processed a request for Thursday games at " + DateTime.Now);
+
+            Hashtable gamesToParse = getGamesToParse(log);
+
+            parseTouchdowns(gamesToParse, log);
+        }
+
+
+
+
         // The timer trigger should run every 10 seconds on Mondays from 8pm-11:59pm, Sept-Jan
         // * * * * * *
         // {second} {minute} {hour} {day of month} {month} {day of week}
