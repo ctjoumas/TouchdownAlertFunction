@@ -60,7 +60,7 @@ namespace TouchdownAlertFunction
         // {second} {minute} {hour} {day of month} {month} {day of week}
         // for the trigger - */10 * 13 * 9-1 0 - each component is:
         // {second} */10 is every 10 seconds
-        // {minute} 20 is at 20 minutes past the hour (thursday night gmaes start at 8:20)
+        // {minute} 20 is at 20 minutes past the hour (thursday night games start at 8:20)
         // {hour} 20-23 is 8pm-11:59pm
         // {day of the month} * is every day
         // {month} 9-12 is Sept-Dec
@@ -82,15 +82,15 @@ namespace TouchdownAlertFunction
         // {second} {minute} {hour} {day of month} {month} {day of week}
         // for the trigger - */10 * 13 * 9-1 0 - each component is:
         // {second} */10 is every 10 seconds
-        // {minute} 20 is at 20 minutes past the hour (thursday night gmaes start at 8:20)
-        // {hour} 18-23 is 6pm-11:59pm
+        // {minute} * is starting at the hour specified below (these preseason games start at 1pm)
+        // {hour} 13-23 is 1pm-11:59pm
         // {day of the month} * is every day
         // {month} 8 is Aug
-        // {day of week} 5 is Friday
-        [FunctionName("ParseTouchdownsFriday")]
-        public void RunFriday([TimerTrigger("*/10 20 20-23 * 8 5")] TimerInfo myTimer, ILogger log)
+        // {day of week} 6 is Friday
+        [FunctionName("ParseTouchdownsSaturdayPreseason")]
+        public void RunSaturdayPreseason([TimerTrigger("*/10 * 13-23 * 8 6")] TimerInfo myTimer, ILogger log)
         {
-            log.LogInformation("C# HTTP trigger function processed a request for Thursday games at " + DateTime.Now);
+            log.LogInformation("C# HTTP trigger function processed a request for Saturday preseason games at " + DateTime.Now);
 
             Hashtable gamesToParse = getGamesToParse(log);
 
@@ -105,7 +105,7 @@ namespace TouchdownAlertFunction
         // {second} {minute} {hour} {day of month} {month} {day of week}
         // for the trigger - */10 * 13 * 9-1 0 - each component is:
         // {second} */10 is every 10 seconds
-        // {minute} 15 is at every 15 minutes past the hours (monday night gmaes start at 8:15)
+        // {minute} 15 is at every 15 minutes past the hours (monday night games start at 8:15)
         // {hour} 20-23 is 8pm-11:59pm
         // {day of the month} * is every day
         // {month} 9-1 is Sept-Jan
