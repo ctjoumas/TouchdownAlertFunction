@@ -229,6 +229,11 @@ namespace TouchdownAlertFunction
                 // get the play by play JSON object for this game
                 playByPlayJsonObject = GetPlayByPlayJsonObject(playByPlayDoc, log);
 
+                if (playByPlayJsonObject == null)
+                {
+                    log.LogInformation("Play by play JSON object is NULL! at " + DateTime.Now);
+                }
+
                 ArrayList playersInGame = (ArrayList)gamesToParse[key];
 
                 //ParsePlayersForGame(playByPlayJsonObject, playersInGame);
@@ -305,6 +310,11 @@ namespace TouchdownAlertFunction
                     {
                         // if a touchdown is scored, the text will be "Touchdown"
                         string driveResult = ((JValue)driveToken.SelectToken("displayResult")).Value.ToString();
+
+                        if (driveResult == null)
+                        {
+                            log.LogInformation("Drive Result is NULL! Need to check why...");
+                        }
 
                         // only parse the plays in this drive if this drive resulted in a made touchdown
                         if (driveResult.ToLower().Equals(("touchdown")))
