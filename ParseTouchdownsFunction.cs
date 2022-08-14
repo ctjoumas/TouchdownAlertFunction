@@ -227,7 +227,7 @@ namespace TouchdownAlertFunction
                 HtmlDocument playByPlayDoc = new HtmlWeb().Load(playByPlayUrl);
 
                 // get the play by play JSON object for this game
-                playByPlayJsonObject = GetPlayByPlayJsonObject(playByPlayDoc);
+                playByPlayJsonObject = GetPlayByPlayJsonObject(playByPlayDoc, log);
 
                 ArrayList playersInGame = (ArrayList)gamesToParse[key];
 
