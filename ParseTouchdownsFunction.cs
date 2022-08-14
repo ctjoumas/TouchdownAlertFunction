@@ -223,6 +223,8 @@ namespace TouchdownAlertFunction
             // that game
             foreach (var key in gamesToParse.Keys)
             {
+                log.LogInformation("Key for play by play URL is: " + key);
+
                 string playByPlayUrl = PLAY_BY_PLAY_URL + key;
                 HtmlDocument playByPlayDoc = new HtmlWeb().Load(playByPlayUrl);
 
@@ -232,6 +234,10 @@ namespace TouchdownAlertFunction
                 if (playByPlayJsonObject == null)
                 {
                     log.LogInformation("Play by play JSON object is NULL! at " + DateTime.Now);
+                }
+                else
+                {
+                    log.LogInformation("Play by play JSON is good at " + DateTime.Now);
                 }
 
                 ArrayList playersInGame = (ArrayList)gamesToParse[key];
