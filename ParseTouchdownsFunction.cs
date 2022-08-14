@@ -83,14 +83,14 @@ namespace TouchdownAlertFunction
         // for the trigger - */10 * 13 * 9-1 0 - each component is:
         // {second} */10 is every 10 seconds
         // {minute} * is starting at the hour specified below (these preseason games start at 1pm)
-        // {hour} 13-23 is 1pm-11:59pm
+        // {hour} 16-20 is 4pm-8pm
         // {day of the month} * is every day
         // {month} 8 is Aug
-        // {day of week} 6 is Friday
-        [FunctionName("ParseTouchdownsSaturdayPreseason")]
-        public void RunSaturdayPreseason([TimerTrigger("*/10 * 13-23 * 8 6")] TimerInfo myTimer, ILogger log)
+        // {day of week} 7 is Sunday
+        [FunctionName("ParseTouchdownsSundayPreseason")]
+        public void RunSaturdayPreseason([TimerTrigger("*/10 25 16-20 * 8 7")] TimerInfo myTimer, ILogger log)
         {
-            log.LogInformation("C# HTTP trigger function processed a request for Saturday preseason games at " + DateTime.Now);
+            log.LogInformation("C# HTTP trigger function processed a request for Sunday preseason games at " + DateTime.Now);
 
             Hashtable gamesToParse = getGamesToParse(log);
 
@@ -242,7 +242,7 @@ namespace TouchdownAlertFunction
         /// </summary>
         /// <param name="playByPlayDoc">The play by play document for a particular game</param>
         /// <returns>The JSON object representing the play by play data.</returns>
-        public JObject GetPlayByPlayJsonObject(HtmlDocument playByPlayDoc)
+        public JObject GetPlayByPlayJsonObject(HtmlDocument playByPlayDoc, ILogger log)
         {
             JObject playByPlayJsonObject = null;
 
@@ -267,6 +267,8 @@ namespace TouchdownAlertFunction
 
                             // load into JSON object
                             playByPlayJsonObject = JObject.Parse(variable);
+
+                            log.LogInformation("Got live JSON object for game.");
 
                             break;
                         }
