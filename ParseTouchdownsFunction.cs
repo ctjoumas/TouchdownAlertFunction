@@ -88,7 +88,7 @@ namespace TouchdownAlertFunction
         // {month} 8 is Aug
         // {day of week} 7 is Sunday
         [FunctionName("ParseTouchdownsSundayPreseason")]
-        public void RunSaturdayPreseason([TimerTrigger("*/10 25 16-20 * 8 7")] TimerInfo myTimer, ILogger log)
+        public void RunSaturdayPreseason([TimerTrigger("*/10 15 14-15 * 8 1")] TimerInfo myTimer, ILogger log)
         {
             log.LogInformation("C# HTTP trigger function processed a request for Sunday preseason games at " + DateTime.Now);
 
