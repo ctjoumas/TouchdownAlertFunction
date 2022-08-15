@@ -34,7 +34,7 @@ namespace TouchdownAlertFunction
         }
 
         [FunctionName("Testing")]
-        public void RunTestTrigger([TimerTrigger("*/10 15 14-15 * 8 1")] TimerInfo myTimer, ILogger log)
+        public void RunTestTrigger([TimerTrigger("*/10 * 14-15 * 8 1")] TimerInfo myTimer, ILogger log)
         {
             log.LogInformation("C# HTTP trigger function processed a request for Sunday preseason games at " + DateTime.Now);
 
