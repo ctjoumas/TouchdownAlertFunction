@@ -161,6 +161,9 @@ namespace TouchdownAlertFunction
                 .AddEnvironmentVariables()
                 .Build();
 
+            string serviceBusSharedAccessSignature = configurationBuilder["ServiceBusSharedAccessKey"];
+            log.LogInformation("Found SB SAS - original function: " + serviceBusSharedAccessSignature);
+
             Hashtable gamesToParse = getGamesToParse(log);
 
             parseTouchdowns(gamesToParse, log, configurationBuilder);
