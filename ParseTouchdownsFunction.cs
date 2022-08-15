@@ -7,7 +7,7 @@ namespace TouchdownAlertFunction
     using Microsoft.AspNetCore.Http;
     using Microsoft.AspNetCore.Mvc;
     using Microsoft.Azure.WebJobs;
-    using Microsoft.Azure.WebJobs.Extensions.Http;
+    using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.Logging;
     using Newtonsoft.Json;
     using Newtonsoft.Json.Linq;
@@ -34,13 +34,22 @@ namespace TouchdownAlertFunction
         }
 
         [FunctionName("Testing")]
-        public void RunTestTrigger([TimerTrigger("*/10 * 14-15 * 8 1")] TimerInfo myTimer, ILogger log)
+        public void RunTestTrigger([TimerTrigger("*/10 * 14-15 * 8 1")] TimerInfo myTimer, ILogger log, ExecutionContext context)
         {
             log.LogInformation("C# HTTP trigger function processed a request for Sunday preseason games at " + DateTime.Now);
 
+            var configurationBuilder = new ConfigurationBuilder()
+                .SetBasePath(context.FunctionAppDirectory)
+                .AddJsonFile("local.settings.json", optional: true, reloadOnChange: true)
+                .AddEnvironmentVariables()
+                .Build();
+
+            string serviceBusSharedAccessSignature = configurationBuilder["ServiceBusSharedAccessKey"];
+            log.LogInformation("Found SB SAS: " + serviceBusSharedAccessSignature);
+
             Hashtable gamesToParse = getGamesToParse(log);
 
-            parseTouchdowns(gamesToParse, log);
+            parseTouchdowns(gamesToParse, log, configurationBuilder);
         }
 
         // http://crontab.cronhub.io/?msclkid=5dd54af5c24911ecad1f7dea98c7030e to verify timer triggers
@@ -56,13 +65,22 @@ namespace TouchdownAlertFunction
         // {day of week} 0 is Sunday
         [FunctionName("ParseTouchdownsSunday")]
         //public void RunSunday([TimerTrigger("*/10 * 8-18 * 5 1")] TimerInfo myTimer, ILogger log)
-        public void RunSunday([TimerTrigger("*/10 * 13-23 * 9-1 0")] TimerInfo myTimer, ILogger log)
+        public void RunSunday([TimerTrigger("*/10 * 13-23 * 9-1 0")] TimerInfo myTimer, ILogger log, ExecutionContext context)
         {
             log.LogInformation("C# HTTP trigger function processed a request for Sunday games at " + DateTime.Now);
 
+            var configurationBuilder = new ConfigurationBuilder()
+                .SetBasePath(context.FunctionAppDirectory)
+                .AddJsonFile("local.settings.json", optional: true, reloadOnChange: true)
+                .AddEnvironmentVariables()
+                .Build();
+
+            string serviceBusSharedAccessSignature = configurationBuilder["ServiceBusSharedAccessKey"];
+            log.LogInformation("Found SB SAS - original function: " + serviceBusSharedAccessSignature);
+
             Hashtable gamesToParse = getGamesToParse(log);
 
-            parseTouchdowns(gamesToParse, log);
+            parseTouchdowns(gamesToParse, log, configurationBuilder);
         }
 
         // The timer trigger should run every 10 seconds on Thursdays from 8-11:59pm, Sept-Jan
@@ -76,13 +94,19 @@ namespace TouchdownAlertFunction
         // {month} 9-12 is Sept-Dec
         // {day of week} 4 is Thursday
         [FunctionName("ParseTouchdownsThursday")]
-        public void RunThursday([TimerTrigger("*/10 20 20-23 * 9-12 4")] TimerInfo myTimer, ILogger log)
+        public void RunThursday([TimerTrigger("*/10 20 20-23 * 9-12 4")] TimerInfo myTimer, ILogger log, ExecutionContext context)
         {
             log.LogInformation("C# HTTP trigger function processed a request for Thursday games at " + DateTime.Now);
 
+            var configurationBuilder = new ConfigurationBuilder()
+                .SetBasePath(context.FunctionAppDirectory)
+                .AddJsonFile("local.settings.json", optional: true, reloadOnChange: true)
+                .AddEnvironmentVariables()
+                .Build();
+
             Hashtable gamesToParse = getGamesToParse(log);
 
-            parseTouchdowns(gamesToParse, log);
+            parseTouchdowns(gamesToParse, log, configurationBuilder);
         }
 
         // TESTING PRESEASON GAME
@@ -98,13 +122,19 @@ namespace TouchdownAlertFunction
         // {month} 8 is Aug
         // {day of week} 7 is Sunday
         [FunctionName("ParseTouchdownsSundayPreseason")]
-        public void RunSaturdayPreseason([TimerTrigger("*/10 15 14-15 * 8 1")] TimerInfo myTimer, ILogger log)
+        public void RunSaturdayPreseason([TimerTrigger("*/10 15 14-15 * 8 1")] TimerInfo myTimer, ILogger log, ExecutionContext context)
         {
             log.LogInformation("C# HTTP trigger function processed a request for Sunday preseason games at " + DateTime.Now);
 
+            var configurationBuilder = new ConfigurationBuilder()
+                            .SetBasePath(context.FunctionAppDirectory)
+                            .AddJsonFile("local.settings.json", optional: true, reloadOnChange: true)
+                            .AddEnvironmentVariables()
+                            .Build();
+
             Hashtable gamesToParse = getGamesToParse(log);
 
-            parseTouchdowns(gamesToParse, log);
+            parseTouchdowns(gamesToParse, log, configurationBuilder);
         }
 
 
@@ -121,13 +151,19 @@ namespace TouchdownAlertFunction
         // {month} 9-1 is Sept-Jan
         // {day of week} 1 is Monday
         [FunctionName("ParseTouchdownsMonday")]
-        public void RunMonday([TimerTrigger("*/10 15 20-23 * 9-1 1")] TimerInfo myTimer, ILogger log)
+        public void RunMonday([TimerTrigger("*/10 15 20-23 * 9-1 1")] TimerInfo myTimer, ILogger log, ExecutionContext context)
         {
             log.LogInformation("C# HTTP trigger function processed a request for Monday games at " + DateTime.Now);
 
+            var configurationBuilder = new ConfigurationBuilder()
+                .SetBasePath(context.FunctionAppDirectory)
+                .AddJsonFile("local.settings.json", optional: true, reloadOnChange: true)
+                .AddEnvironmentVariables()
+                .Build();
+
             Hashtable gamesToParse = getGamesToParse(log);
 
-            parseTouchdowns(gamesToParse, log);
+            parseTouchdowns(gamesToParse, log, configurationBuilder);
         }
 
         /// <summary>
@@ -224,7 +260,7 @@ namespace TouchdownAlertFunction
         /// </summary>
         /// <param name="gamesToParse">Key is the Espn Game ID and the value is the list of players playing in the game</param>
         /// <param name="log">Logger</param>
-        public void parseTouchdowns(Hashtable gamesToParse, ILogger log)
+        public void parseTouchdowns(Hashtable gamesToParse, ILogger log, IConfiguration configurationBuilder)
         {
             JObject playByPlayJsonObject;
 
@@ -253,7 +289,7 @@ namespace TouchdownAlertFunction
                 ArrayList playersInGame = (ArrayList)gamesToParse[key];
 
                 //ParsePlayersForGame(playByPlayJsonObject, playersInGame);
-                ParsePlayersForGame(int.Parse((string)key), playByPlayJsonObject, playersInGame, log);
+                ParsePlayersForGame(int.Parse((string)key), playByPlayJsonObject, playersInGame, log, configurationBuilder);
             }
         }
 
@@ -310,7 +346,7 @@ namespace TouchdownAlertFunction
         /// </summary>
         /// <param name="playByPlayJsonObject"></param>
         /// <param name="playersInGame"></param>
-        private async void ParsePlayersForGame(int espnGameId, JObject playByPlayJsonObject, ArrayList playersInGame, ILogger log)
+        private async void ParsePlayersForGame(int espnGameId, JObject playByPlayJsonObject, ArrayList playersInGame, ILogger log, IConfiguration configurationBuilder)
         {
             // each play token is a drive, so we will go through this to parse all player stats
             JToken driveTokens = playByPlayJsonObject.SelectToken("drives.previous");
@@ -377,7 +413,7 @@ namespace TouchdownAlertFunction
                                     if (touchdownAdded)
                                     {
                                         log.LogInformation("Added TD for " + touchdownDetails.PlayerName);
-                                        await sendTouchdownMessage(touchdownDetails);
+                                        await sendTouchdownMessage(touchdownDetails, configurationBuilder);
                                     }
                                     else
                                     {
@@ -396,10 +432,13 @@ namespace TouchdownAlertFunction
         /// </summary>
         /// <param name="touchdownDetails">The details of the particular touchdown</param>
         /// <returns></returns>
-        private async Task sendTouchdownMessage(TouchdownDetails touchdownDetails)
+        private async Task sendTouchdownMessage(TouchdownDetails touchdownDetails, IConfiguration configurationBuilder)
         {
             // connection string to your Service Bus namespace
-            string connectionString = "Endpoint=sb://fantasyfootballstattracker.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=dZmufQp1JtwggtAqRFqxzUbOf5mloeA4LJUapntE+wY=";
+            string serviceBusSharedAccessSignature = configurationBuilder["ServiceBusSharedAccessKey"];
+            string connectionString = "Endpoint=sb://fantasyfootballstattracker.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=" + serviceBusSharedAccessSignature;
+
+            //string connectionString = "Endpoint=sb://fantasyfootballstattracker.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=dZmufQp1JtwggtAqRFqxzUbOf5mloeA4LJUapntE+wY=";
 
             // name of your Service Bus queue
             string queueName = "touchdownqueue";
