@@ -33,25 +33,6 @@ namespace TouchdownAlertFunction
         {
         }
 
-        [FunctionName("Testing")]
-        public void RunTestTrigger([TimerTrigger("*/10 * 14-15 * 8 1")] TimerInfo myTimer, ILogger log, ExecutionContext context)
-        {
-            log.LogInformation("C# HTTP trigger function processed a request for Sunday preseason games at " + DateTime.Now);
-
-            var configurationBuilder = new ConfigurationBuilder()
-                .SetBasePath(context.FunctionAppDirectory)
-                .AddJsonFile("local.settings.json", optional: true, reloadOnChange: true)
-                .AddEnvironmentVariables()
-                .Build();
-
-            string serviceBusSharedAccessSignature = configurationBuilder["ServiceBusSharedAccessKey"];
-            log.LogInformation("Found SB SAS: " + serviceBusSharedAccessSignature);
-
-            Hashtable gamesToParse = getGamesToParse(log);
-
-            parseTouchdowns(gamesToParse, log, configurationBuilder);
-        }
-
         // http://crontab.cronhub.io/?msclkid=5dd54af5c24911ecad1f7dea98c7030e to verify timer triggers
         // The timer trigger should run every 10 seconds on Sundays from 1-11:59pm, Sept-Jan
         // * * * * * *
@@ -121,10 +102,10 @@ namespace TouchdownAlertFunction
         // {day of the month} * is every day
         // {month} 8 is Aug
         // {day of week} 7 is Sunday
-        [FunctionName("ParseTouchdownsSundayPreseason")]
-        public void RunSaturdayPreseason([TimerTrigger("*/10 15 14-15 * 8 1")] TimerInfo myTimer, ILogger log, ExecutionContext context)
+        [FunctionName("ParseTouchdownsThursdayPreseason")]
+        public void RunSaturdayPreseason([TimerTrigger("*/10 * 20-23 * 8 4")] TimerInfo myTimer, ILogger log, ExecutionContext context)
         {
-            log.LogInformation("C# HTTP trigger function processed a request for Sunday preseason games at " + DateTime.Now);
+            log.LogInformation("C# HTTP trigger function processed a request for Thursday Week 2 preseason games at " + DateTime.Now);
 
             var configurationBuilder = new ConfigurationBuilder()
                             .SetBasePath(context.FunctionAppDirectory)
