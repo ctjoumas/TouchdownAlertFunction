@@ -103,7 +103,7 @@ namespace TouchdownAlertFunction
         // {month} 8 is Aug
         // {day of week} 7 is Sunday
         [FunctionName("ParseTouchdownsFridayTest")]
-        public void RunFridayTest([TimerTrigger("*/10 33 8-10 * 8 5")] TimerInfo myTimer, ILogger log, ExecutionContext context)
+        public void RunFridayTest([TimerTrigger("*/10 40 12-20 * 8 5")] TimerInfo myTimer, ILogger log, ExecutionContext context)
         {
             log.LogInformation("C# HTTP trigger function processed a request for Thursday Week 2 preseason games at " + DateTime.Now);
 
