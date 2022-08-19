@@ -268,12 +268,12 @@ namespace TouchdownAlertFunction
                 else
                 {
                     log.LogInformation("Play by play JSON is good at " + DateTime.Now);
+
+                    ArrayList playersInGame = (ArrayList)gamesToParse[key];
+
+                    //ParsePlayersForGame(playByPlayJsonObject, playersInGame);
+                    ParsePlayersForGame(int.Parse((string)key), playByPlayJsonObject, playersInGame, log, configurationBuilder);
                 }
-
-                ArrayList playersInGame = (ArrayList)gamesToParse[key];
-
-                //ParsePlayersForGame(playByPlayJsonObject, playersInGame);
-                ParsePlayersForGame(int.Parse((string)key), playByPlayJsonObject, playersInGame, log, configurationBuilder);
             }
         }
 
