@@ -7,6 +7,7 @@ namespace TouchdownAlertFunction
     using Microsoft.AspNetCore.Http;
     using Microsoft.AspNetCore.Mvc;
     using Microsoft.Azure.WebJobs;
+    using Microsoft.Azure.WebJobs.Extensions.Http;
     using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.Logging;
     using Newtonsoft.Json;
@@ -14,6 +15,7 @@ namespace TouchdownAlertFunction
     using System;
     using System.Collections;
     using System.Data.SqlClient;
+    using System.IO;
     using System.Text.Json;
     using System.Threading.Tasks;
 
@@ -34,9 +36,18 @@ namespace TouchdownAlertFunction
         }
 
         [FunctionName("ParseTouchdownsFromJson")]
-        public void RunJsonParser(JObject jsonPlayByPlayDoc, ILogger log, ExecutionContext context)
+        public async void RunJsonParser([HttpTrigger(AuthorizationLevel.Function, "post", Route = null)] HttpRequest req, ILogger log)
         {
+            //log.LogInformation(jsonPlayByPlayDoc.ToString());
+            string requestBody = String.Empty;
+            using (StreamReader streamReader = new StreamReader(req.Body))
+            {
+                requestBody = await streamReader.ReadToEndAsync();
+            }
+            JObject jsonPlayByPlayDoc = (JObject) JsonConvert.DeserializeObject(requestBody);
+
             log.LogInformation(jsonPlayByPlayDoc.ToString());
+
             ParseSinglePlayerTest(jsonPlayByPlayDoc, "David Blough", log);
         }
 
