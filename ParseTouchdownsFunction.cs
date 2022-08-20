@@ -34,7 +34,7 @@ namespace TouchdownAlertFunction
         }
 
         [FunctionName("ParseTouchdownsFromJson")]
-        public void RunJsonParser(JObject jsonPlayByPlayDoc, ILogger log)
+        public void RunJsonParser(JObject jsonPlayByPlayDoc, ILogger log, ExecutionContext context)
         {
             log.LogInformation(jsonPlayByPlayDoc.ToString());
             ParseSinglePlayerTest(jsonPlayByPlayDoc, "David Blough", log);
