@@ -392,7 +392,7 @@ namespace TouchdownAlertFunction
                                 if (touchdownText.Contains(abbreviatedPlayerName) && (touchdownText.IndexOf("TOUCHDOWN") > touchdownText.IndexOf(abbreviatedPlayerName)))
                                 {
                                     // if this touchdown scored by this player was not already parsed, the touchdown will be added
-                                    bool touchdownAdded = AddTouchdownDetails(espnGameId, quarter, gameClock, touchdownDetails.PlayerName, log);
+                                    bool touchdownAdded = AddTouchdownDetails(espnGameId, quarter, gameClock, touchdownDetails.PlayerName, touchdownDetails.Season, touchdownDetails.OwnerId, log);
 
                                     if (touchdownAdded)
                                     {
@@ -482,7 +482,7 @@ namespace TouchdownAlertFunction
         /// <param name="playerName">The player who scored the touchdown</param>
         /// <param name="log">The logger.</param>
         /// <returns></returns>
-        private bool AddTouchdownDetails(int espnGameId, int touchdownQuarter, string touchdownGameClock, string playerName, ILogger log)
+        private bool AddTouchdownDetails(int espnGameId, int touchdownQuarter, string touchdownGameClock, string playerName, int season, int ownerId, ILogger log)
         {
             bool touchdownAdded = false;
 
@@ -519,6 +519,8 @@ namespace TouchdownAlertFunction
                     command.Parameters.Add(new SqlParameter("@TouchdownQuarter", System.Data.SqlDbType.Int) { Value = touchdownQuarter });
                     command.Parameters.Add(new SqlParameter("@TouchdownGameClock", System.Data.SqlDbType.NVarChar) { Value = touchdownGameClock });
                     command.Parameters.Add(new SqlParameter("@PlayerName", System.Data.SqlDbType.NVarChar) { Value = playerName });
+                    command.Parameters.Add(new SqlParameter("@Season", System.Data.SqlDbType.Int) { Value = season });
+                    command.Parameters.Add(new SqlParameter("@OwnerID", System.Data.SqlDbType.Int) { Value = ownerId });
 
                     touchdownAdded = (bool) command.ExecuteScalar();
                 }
