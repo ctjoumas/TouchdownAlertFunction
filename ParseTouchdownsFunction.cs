@@ -33,6 +33,83 @@ namespace TouchdownAlertFunction
         {
         }
 
+        [FunctionName("ParseTouchdownsFromJson")]
+        public void RunJsonParser(JObject jsonPlayByPlayDoc, string playerName, ILogger log)
+        {
+            log.LogInformation(jsonPlayByPlayDoc.ToString());
+            ParseSinglePlayerTest(jsonPlayByPlayDoc, playerName, log);
+        }
+
+        private void ParseSinglePlayerTest(JObject playByPlayJsonObject, string playerName, ILogger log)
+        {
+            // each play token is a drive, so we will go through this to parse all player stats
+            JToken driveTokens = playByPlayJsonObject.SelectToken("drives.previous");
+
+            // if the game started and there are no drives yet
+            if (driveTokens != null)
+            {
+                foreach (JToken driveToken in driveTokens)
+                {
+                    JToken driveResultValue = driveToken.SelectToken("displayResult");
+
+                    if (driveResultValue != null)
+                    {
+                        // if a touchdown is scored, the text will be "Touchdown"
+                        string driveResult = ((JValue)driveToken.SelectToken("displayResult")).Value.ToString();
+
+                        if (driveResult == null)
+                        {
+                            log.LogInformation("Drive Result is NULL! Need to check why...");
+                        }
+
+                        // only parse the plays in this drive if this drive resulted in a made touchdown
+                        if (driveResult.ToLower().Equals(("touchdown")))
+                        {
+                            // get the number of plays
+                            int numPlays = ((JArray)driveToken.SelectToken("plays")).Count;
+
+                            // the last node of the plays node will have the scoring play
+                            JToken playToken = driveToken.SelectToken("plays[" + (numPlays - 1) + "]");
+
+                            // get the details of the touchdown
+                            // we will cache the quarter and game clock so the next time we check the live JSON data, we don't
+                            // send a message to the service bus that the same touchdown was scored
+                            int quarter = int.Parse(playToken.SelectToken("period.number").ToString());
+                            string gameClock = (string)((JValue)playToken.SelectToken("clock.displayValue")).Value;
+
+                            // the player name is displayed here, but it's usually first initial.lastname (G.Kittle), so we'd
+                            // search for this player name in the players table for the current roster / matchup
+                            string touchdownText = (string)((JValue)playToken.SelectToken("text")).Value;
+
+                            // get the player name as first <initial>.<lastname> to check if this is the player
+                            // who scored a touchdown
+                            string abbreviatedPlayerName = playerName;
+                            int spaceIndex = abbreviatedPlayerName.IndexOf(' ');
+                            abbreviatedPlayerName = abbreviatedPlayerName[0] + "." + abbreviatedPlayerName.Substring(spaceIndex + 1);
+
+                            if (touchdownText.Contains(abbreviatedPlayerName) && (touchdownText.IndexOf("TOUCHDOWN") <= touchdownText.IndexOf(abbreviatedPlayerName)))
+                            {
+                                log.LogInformation("Did NOT add TD for " + playerName + "; Player is a kicker.");
+                            }
+
+                            // We need to make sure that this player is the player who scored the TD and not the kicker kicking the XP. The
+                            // format of the text in the JSON Play By Play will be:
+                            // "text": "(5:30) (Shotgun) D.Samuel left end for 8 yards, TOUCHDOWN. R.Gould extra point is GOOD, Center-T.Pepper, Holder-M.Wishnowsky."
+                            // It should be enough to ensure the occurence of the player has to be before the occurence of the text "TOUCHDOWN"
+                            if (touchdownText.Contains(abbreviatedPlayerName) && (touchdownText.IndexOf("TOUCHDOWN") > touchdownText.IndexOf(abbreviatedPlayerName)))
+                            {
+                                log.LogInformation("Added TD for " + playerName);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+
+
+
+
         // http://crontab.cronhub.io/?msclkid=5dd54af5c24911ecad1f7dea98c7030e to verify timer triggers
         // The timer trigger should run every 10 seconds on Sundays from 1-11:59pm, Sept-Jan
         // * * * * * *
@@ -117,8 +194,6 @@ namespace TouchdownAlertFunction
 
             parseTouchdowns(gamesToParse, log, configurationBuilder);
         }
-
-
 
 
         // The timer trigger should run every 10 seconds on Mondays from 8pm-11:59pm, Sept-Jan
