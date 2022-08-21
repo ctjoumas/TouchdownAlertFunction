@@ -46,7 +46,7 @@ namespace TouchdownAlertFunction
             }
             JObject jsonPlayByPlayDoc = (JObject) JsonConvert.DeserializeObject(requestBody);
 
-            log.LogInformation(jsonPlayByPlayDoc.ToString());
+            log.LogInformation(jsonPlayByPlayDoc.ToString().Length.ToString());
 
             ParseSinglePlayerTest(jsonPlayByPlayDoc, "David Blough", log);
         }
