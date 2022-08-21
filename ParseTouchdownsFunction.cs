@@ -50,7 +50,9 @@ namespace TouchdownAlertFunction
             JObject jsonPlayByPlayDoc = (JObject)JToken.ReadFrom(reader);
             //JObject jsonPlayByPlayDoc = (JObject) JsonConvert.DeserializeObject(requestBody);
 
-            log.LogInformation(jsonPlayByPlayDoc.ToString().Length.ToString());
+            //log.LogInformation(jsonPlayByPlayDoc.ToString().Length.ToString());
+            string value = ((JValue)jsonPlayByPlayDoc.SelectToken("drives.previous[0].displayResult")).Value.ToString();
+            log.LogInformation(value);
 
             ParseSinglePlayerTest(jsonPlayByPlayDoc, "David Blough", log);
         }
