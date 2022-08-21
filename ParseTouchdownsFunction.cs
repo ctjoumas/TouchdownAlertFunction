@@ -44,6 +44,7 @@ namespace TouchdownAlertFunction
             {
                 requestBody = await streamReader.ReadToEndAsync();
             }
+            log.LogInformation(requestBody);
             JObject jsonPlayByPlayDoc = (JObject) JsonConvert.DeserializeObject(requestBody);
 
             log.LogInformation(jsonPlayByPlayDoc.ToString().Length.ToString());
