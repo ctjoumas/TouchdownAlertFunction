@@ -40,21 +40,27 @@ namespace TouchdownAlertFunction
         {
             //log.LogInformation(jsonPlayByPlayDoc.ToString());
             string requestBody = String.Empty;
-            //using (StreamReader streamReader = new StreamReader(req.Body))
-            //{
-            //    requestBody = await streamReader.ReadToEndAsync();
-            //}
+            using (StreamReader streamReader = new StreamReader(req.Body))
+            {
+                requestBody = await streamReader.ReadToEndAsync();
+            }
             //log.LogInformation(requestBody);
-            StreamReader streamReader = new StreamReader(req.Body);
-            JsonTextReader reader = new JsonTextReader(streamReader);
-            JObject jsonPlayByPlayDoc = (JObject)JToken.ReadFrom(reader);
-            //JObject jsonPlayByPlayDoc = (JObject) JsonConvert.DeserializeObject(requestBody);
+            //StreamReader streamReader = new StreamReader(req.Body);
+            //JsonTextReader reader = new JsonTextReader(streamReader);
+            //JObject jsonPlayByPlayDoc = (JObject)JToken.ReadFrom(reader);
+            try
+            {
+                JObject jsonPlayByPlayDoc = (JObject)JsonConvert.DeserializeObject(requestBody);
+                //log.LogInformation(jsonPlayByPlayDoc.ToString().Length.ToString());
+                string value = ((JValue)jsonPlayByPlayDoc.SelectToken("drives.previous[0].displayResult")).Value.ToString();
+                log.LogInformation(value);
 
-            //log.LogInformation(jsonPlayByPlayDoc.ToString().Length.ToString());
-            string value = ((JValue)jsonPlayByPlayDoc.SelectToken("drives.previous[0].displayResult")).Value.ToString();
-            log.LogInformation(value);
-
-            ParseSinglePlayerTest(jsonPlayByPlayDoc, "David Blough", log);
+                ParseSinglePlayerTest(jsonPlayByPlayDoc, "David Blough", log);
+            }
+            catch (Exception e )
+            {
+                log.LogInformation(e.Message);
+            }            
         }
 
         private void ParseSinglePlayerTest(JObject playByPlayJsonObject, string playerName, ILogger log)
