@@ -40,12 +40,15 @@ namespace TouchdownAlertFunction
         {
             //log.LogInformation(jsonPlayByPlayDoc.ToString());
             string requestBody = String.Empty;
-            using (StreamReader streamReader = new StreamReader(req.Body))
-            {
-                requestBody = await streamReader.ReadToEndAsync();
-            }
-            log.LogInformation(requestBody);
-            JObject jsonPlayByPlayDoc = (JObject) JsonConvert.DeserializeObject(requestBody);
+            //using (StreamReader streamReader = new StreamReader(req.Body))
+            //{
+            //    requestBody = await streamReader.ReadToEndAsync();
+            //}
+            //log.LogInformation(requestBody);
+            StreamReader streamReader = new StreamReader(req.Body);
+            JsonTextReader reader = new JsonTextReader(streamReader);
+            JObject jsonPlayByPlayDoc = (JObject)JToken.ReadFrom(reader);
+            //JObject jsonPlayByPlayDoc = (JObject) JsonConvert.DeserializeObject(requestBody);
 
             log.LogInformation(jsonPlayByPlayDoc.ToString().Length.ToString());
 
