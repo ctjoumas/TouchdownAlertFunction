@@ -47,22 +47,19 @@ namespace TouchdownAlertFunction
             //log.LogInformation(requestBody);
             using (StreamReader streamReader = new StreamReader(req.Body))
             {
-                using (JsonTextReader reader = new JsonTextReader(streamReader))
+                try
                 {
-                    try
-                    {
-                        JObject jsonPlayByPlayDoc = JObject.Parse(reader.ReadAsString());
-                        //JObject jsonPlayByPlayDoc = (JObject)JToken.ReadFrom(reader);
+                    JObject jsonPlayByPlayDoc = JObject.Parse(JsonConvert.SerializeObject(streamReader.ReadToEnd()));
+                    //JObject jsonPlayByPlayDoc = (JObject)JToken.ReadFrom(reader);
 
-                        string value = ((JValue)jsonPlayByPlayDoc.SelectToken("drives.previous[0].displayResult")).Value.ToString();
-                        log.LogInformation(value);
+                    string value = ((JValue)jsonPlayByPlayDoc.SelectToken("drives.previous[0].displayResult")).Value.ToString();
+                    log.LogInformation(value);
 
-                        ParseSinglePlayerTest(jsonPlayByPlayDoc, "David Blough", log);
-                    }
-                    catch (Exception e)
-                    {
-                        log.LogInformation(e.Message);
-                    }
+                    ParseSinglePlayerTest(jsonPlayByPlayDoc, "David Blough", log);
+                }
+                catch (Exception e)
+                {
+                    log.LogInformation(e.Message);
                 }
             }
         }
