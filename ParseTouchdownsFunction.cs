@@ -51,7 +51,8 @@ namespace TouchdownAlertFunction
                 {
                     try
                     {
-                        JObject jsonPlayByPlayDoc = (JObject)JToken.ReadFrom(reader);
+                        JObject jsonPlayByPlayDoc = JObject.Parse(reader.ReadAsString());
+                        //JObject jsonPlayByPlayDoc = (JObject)JToken.ReadFrom(reader);
 
                         string value = ((JValue)jsonPlayByPlayDoc.SelectToken("drives.previous[0].displayResult")).Value.ToString();
                         log.LogInformation(value);
