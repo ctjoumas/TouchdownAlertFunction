@@ -459,51 +459,74 @@ namespace TouchdownAlertFunction
                             // get the number of plays
                             int numPlays = ((JArray)driveToken.SelectToken("plays")).Count;
 
-                            // the last node of the plays node will have the scoring play
-                            JToken playToken = driveToken.SelectToken("plays[" + (numPlays - 1) + "]");
+                            // in rare cases, if a play occurs just before a quarter ends and is the last play, this last play
+                            // node may be just showing the end of the quarter and not actually a play in the drive. THis would be
+                            // missing the "scoringType" node, so we can check first if this exists in the last node. If not, then
+                            // we will move back a node. It should be the second to last, but we will keep going back until we find
+                            // the touchdown play.
+                            int lastPlayOfDriveIndex = numPlays - 1;
+                            bool touchdownPlayFound = false;
 
-                            // get the details of the touchdown
-                            // we will cache the quarter and game clock so the next time we check the live JSON data, we don't
-                            // send a message to the service bus that the same touchdown was scored
-                            int quarter = int.Parse(playToken.SelectToken("period.number").ToString());
-                            string gameClock = (string)((JValue)playToken.SelectToken("clock.displayValue")).Value;
-
-                            // the player name is displayed here, but it's usually first initial.lastname (G.Kittle), so we'd
-                            // search for this player name in the players table for the current roster / matchup
-                            string touchdownText = (string)((JValue)playToken.SelectToken("text")).Value;
-
-                            // check if any of players in the players list (current roster) have scored
-                            foreach (TouchdownDetails touchdownDetails in playersInGame)
+                            while (!touchdownPlayFound)
                             {
-                                // get the player name as first <initial>.<lastname> to check if this is the player
-                                // who scored a touchdown
-                                string abbreviatedPlayerName = touchdownDetails.PlayerName;
-                                int spaceIndex = abbreviatedPlayerName.IndexOf(' ');
-                                abbreviatedPlayerName = abbreviatedPlayerName[0] + "." + abbreviatedPlayerName.Substring(spaceIndex + 1);
+                                // the last node of the plays node will have the scoring play
+                                JToken playToken = driveToken.SelectToken("plays[" + (numPlays - 1) + "]");
 
-                                if (touchdownText.Contains(abbreviatedPlayerName) && (touchdownText.IndexOf("TOUCHDOWN") <= touchdownText.IndexOf(abbreviatedPlayerName)))
+                                // check if the scoringType node exists
+                                JToken scoringTypeToken = playToken.SelectToken("scoringType.displayName");
+
+                                if (scoringTypeToken != null)
                                 {
-                                    log.LogInformation("Did NOT add TD for " + touchdownDetails.PlayerName + "; Player is a kicker.");
+                                    touchdownPlayFound = true;
+
+                                    // get the details of the touchdown
+                                    // we will cache the quarter and game clock so the next time we check the live JSON data, we don't
+                                    // send a message to the service bus that the same touchdown was scored
+                                    int quarter = int.Parse(playToken.SelectToken("period.number").ToString());
+                                    string gameClock = (string)((JValue)playToken.SelectToken("clock.displayValue")).Value;
+
+                                    // the player name is displayed here, but it's usually first initial.lastname (G.Kittle), so we'd
+                                    // search for this player name in the players table for the current roster / matchup
+                                    string touchdownText = (string)((JValue)playToken.SelectToken("text")).Value;
+
+                                    // check if any of players in the players list (current roster) have scored
+                                    foreach (TouchdownDetails touchdownDetails in playersInGame)
+                                    {
+                                        // get the player name as first <initial>.<lastname> to check if this is the player
+                                        // who scored a touchdown
+                                        string abbreviatedPlayerName = touchdownDetails.PlayerName;
+                                        int spaceIndex = abbreviatedPlayerName.IndexOf(' ');
+                                        abbreviatedPlayerName = abbreviatedPlayerName[0] + "." + abbreviatedPlayerName.Substring(spaceIndex + 1);
+
+                                        if (touchdownText.Contains(abbreviatedPlayerName) && (touchdownText.IndexOf("TOUCHDOWN") <= touchdownText.IndexOf(abbreviatedPlayerName)))
+                                        {
+                                            log.LogInformation("Did NOT add TD for " + touchdownDetails.PlayerName + "; Player is a kicker.");
+                                        }
+
+                                        // We need to make sure that this player is the player who scored the TD and not the kicker kicking the XP. The
+                                        // format of the text in the JSON Play By Play will be:
+                                        // "text": "(5:30) (Shotgun) D.Samuel left end for 8 yards, TOUCHDOWN. R.Gould extra point is GOOD, Center-T.Pepper, Holder-M.Wishnowsky."
+                                        // It should be enough to ensure the occurence of the player has to be before the occurence of the text "TOUCHDOWN"
+                                        if (touchdownText.Contains(abbreviatedPlayerName) && (touchdownText.IndexOf("TOUCHDOWN") > touchdownText.IndexOf(abbreviatedPlayerName)))
+                                        {
+                                            // if this touchdown scored by this player was not already parsed, the touchdown will be added
+                                            bool touchdownAdded = AddTouchdownDetails(espnGameId, quarter, gameClock, touchdownDetails.PlayerName, touchdownDetails.Season, touchdownDetails.OwnerId, log);
+
+                                            if (touchdownAdded)
+                                            {
+                                                log.LogInformation("Added TD for " + touchdownDetails.PlayerName);
+                                                await sendTouchdownMessage(touchdownDetails, configurationBuilder);
+                                            }
+                                            else
+                                            {
+                                                log.LogInformation("Did NOT log TD for " + touchdownDetails.PlayerName + "; TD already parsed earlier.");
+                                            }
+                                        }
+                                    }
                                 }
-
-                                // We need to make sure that this player is the player who scored the TD and not the kicker kicking the XP. The
-                                // format of the text in the JSON Play By Play will be:
-                                // "text": "(5:30) (Shotgun) D.Samuel left end for 8 yards, TOUCHDOWN. R.Gould extra point is GOOD, Center-T.Pepper, Holder-M.Wishnowsky."
-                                // It should be enough to ensure the occurence of the player has to be before the occurence of the text "TOUCHDOWN"
-                                if (touchdownText.Contains(abbreviatedPlayerName) && (touchdownText.IndexOf("TOUCHDOWN") > touchdownText.IndexOf(abbreviatedPlayerName)))
+                                else
                                 {
-                                    // if this touchdown scored by this player was not already parsed, the touchdown will be added
-                                    bool touchdownAdded = AddTouchdownDetails(espnGameId, quarter, gameClock, touchdownDetails.PlayerName, touchdownDetails.Season, touchdownDetails.OwnerId, log);
-
-                                    if (touchdownAdded)
-                                    {
-                                        log.LogInformation("Added TD for " + touchdownDetails.PlayerName);
-                                        await sendTouchdownMessage(touchdownDetails, configurationBuilder);
-                                    }
-                                    else
-                                    {
-                                        log.LogInformation("Did NOT log TD for " + touchdownDetails.PlayerName + "; TD already parsed earlier.");
-                                    }
+                                    lastPlayOfDriveIndex--;
                                 }
                             }
                         }
