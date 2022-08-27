@@ -205,10 +205,10 @@ namespace TouchdownAlertFunction
         // {day of the month} * is every day
         // {month} 8 is Aug
         // {day of week} 7 is Sunday
-        [FunctionName("ParseTouchdownsMondayPreseason")]
-        public void RunMondayPreseason([TimerTrigger("*/10 * 20-23 * 8 1")] TimerInfo myTimer, ILogger log, ExecutionContext context)
+        [FunctionName("ParseTouchdownsSaturdayPreseason")]
+        public void RunSaturdayPreseason([TimerTrigger("*/10 * 15-23 * 8 6")] TimerInfo myTimer, ILogger log, ExecutionContext context)
         {
-            log.LogInformation("C# HTTP trigger function processed a request for Monday Week 2 preseason games at " + DateTime.Now);
+            log.LogInformation("C# HTTP trigger function processed a request for Saturday Week 3 preseason games at " + DateTime.Now);
 
             var configurationBuilder = new ConfigurationBuilder()
                             .SetBasePath(context.FunctionAppDirectory)
