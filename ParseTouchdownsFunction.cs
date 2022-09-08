@@ -172,13 +172,13 @@ namespace TouchdownAlertFunction
         // {second} {minute} {hour} {day of month} {month} {day of week}
         // for the trigger - */10 * 13 * 9-1 0 - each component is:
         // {second} */10 is every 10 seconds
-        // {minute} 20 is at 20 minutes past the hour (thursday night games start at 8:20)
+        // {minute} 20 is at 20 minutes past the hour (thursday night games start at 8:20) - using *
         // {hour} 20-23 is 8pm-11:59pm
         // {day of the month} * is every day
         // {month} 9-12 is Sept-Dec
         // {day of week} 4 is Thursday
         [FunctionName("ParseTouchdownsThursday")]
-        public void RunThursday([TimerTrigger("*/10 20 20-23 * 9-12 4")] TimerInfo myTimer, ILogger log, ExecutionContext context)
+        public void RunThursday([TimerTrigger("*/10 * 20-23 * 9-12 4")] TimerInfo myTimer, ILogger log, ExecutionContext context)
         {
             log.LogInformation("C# HTTP trigger function processed a request for Thursday games at " + DateTime.Now);
 
@@ -233,7 +233,7 @@ namespace TouchdownAlertFunction
         // {month} 9-1 is Sept-Jan
         // {day of week} 1 is Monday
         [FunctionName("ParseTouchdownsMonday")]
-        public void RunMonday([TimerTrigger("*/10 15 20-23 * 9-1 1")] TimerInfo myTimer, ILogger log, ExecutionContext context)
+        public void RunMonday([TimerTrigger("*/10 * 20-23 * 9-1 1")] TimerInfo myTimer, ILogger log, ExecutionContext context)
         {
             log.LogInformation("C# HTTP trigger function processed a request for Monday games at " + DateTime.Now);
 
