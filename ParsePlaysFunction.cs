@@ -64,7 +64,7 @@ namespace PlayAlertFunction
         }
 
         [FunctionName("ParseBigPlayFromJson")]
-        public async void RunBigPlayTest([HttpTrigger(AuthorizationLevel.Function, "post", Route = null)] HttpRequest req, ILogger log)
+        public async void RunBigPlayTest([HttpTrigger(AuthorizationLevel.Function, "post", Route = null)] HttpRequest req, ILogger log, ExecutionContext context)
         {
             string requestBody = String.Empty;
 
@@ -79,7 +79,7 @@ namespace PlayAlertFunction
                     //string value = ((JValue)jsonPlayByPlayDoc.SelectToken("drives.current.displayResult")).Value.ToString();
                     //log.LogInformation(value);
 
-                    ParseSinglePlayerBigPlayTest(jsonPlayByPlayDoc, "Deebo Samuel", log);
+                    ParseSinglePlayerBigPlayTest(jsonPlayByPlayDoc, "Deebo Samuel", log, context);
                 }
                 catch (Exception e)
                 {
@@ -154,17 +154,20 @@ namespace PlayAlertFunction
             }
         }
 
-        private void ParseSinglePlayerBigPlayTest(JObject playByPlayJsonObject, string playerName, ILogger log)
+        private async void ParseSinglePlayerBigPlayTest(JObject playByPlayJsonObject, string playerName, ILogger log, ExecutionContext context)
         {
             // get all plays in the current drive
             JToken playTokens = playByPlayJsonObject.SelectToken("drives.current.plays");
+
+            // used to determine if a big play occured, whether it's passing, receiving, or rushing
+            bool bigPlayOccurred = false;
 
             // if the game started and there are plays in the current drive
             if (playTokens != null)
             {
                 foreach (JToken playToken in playTokens)
                 {
-                    Console.WriteLine((bool)((JValue)playToken.SelectToken("scoringPlay")).Value);
+                    // we can get the yardage of the play from the statYardage property
                     int playYardage = (int)Int64.Parse(((JValue)playToken.SelectToken("statYardage")).Value.ToString());
 
                     // a passing or receiving play requires less yardage than a pass play to be considered a big play,
@@ -182,12 +185,18 @@ namespace PlayAlertFunction
                         // search for this player name in the players table for the current roster / matchup
                         string bigPlayText = (string)((JValue)playToken.SelectToken("text")).Value;
 
-                        // check if the player is involved in this play
                         // get the player name as first <initial>.<lastname> to check if this is the player
                         // who scored a touchdown
                         string abbreviatedPlayerName = playerName;
                         int spaceIndex = abbreviatedPlayerName.IndexOf(' ');
                         abbreviatedPlayerName = abbreviatedPlayerName[0] + "." + abbreviatedPlayerName.Substring(spaceIndex + 1);
+
+                        PlayDetails playDetails = new PlayDetails();
+                        playDetails.OwnerId = 2;
+                        playDetails.OwnerName = "Chris";
+                        playDetails.PhoneNumber = "703-436-6826";
+                        playDetails.PlayerName = playerName;
+                        playDetails.Season = 2022;
 
                         // if this player was involved in the play, let's determine the type of play
                         if (bigPlayText.Contains(abbreviatedPlayerName))
@@ -205,21 +214,51 @@ namespace PlayAlertFunction
                                     // player threw a pass, so we'll only alert if it's above the passing yardage threshold
                                     if (playYardage >= PASSING_BIG_PLAY_YARDAGE)
                                     {
-                                        log.LogInformation("Big play! " + playerName + " threw a pass of " + playYardage);
+                                        bigPlayOccurred = true;
+                                        playDetails.Message = "Big play! " + playDetails.PlayerName + " threw a pass of " + playYardage;
                                     }
                                 }
                                 else
                                 {
+                                    bigPlayOccurred = true;
+
                                     // player received a pass, and we already know it's above the threshold since that was our
                                     // first check, so just send the alert
-                                    log.LogInformation("Big play! " + playerName + " caught a pass of " + playYardage);
+                                    playDetails.Message = "Big play! " + playDetails.PlayerName + " caught a pass of " + playYardage;
                                 }
                             }
                             else
                             {
-                                log.LogInformation("Big play! " + playerName + " rushed for " + playYardage);
+                                bigPlayOccurred = true;
+                                playDetails.Message = "Big play! " + playDetails.PlayerName + " rushed for " + playYardage;
                             }
                         }
+
+                        // if a big play occurred, let's add it to the database
+                        if (bigPlayOccurred)
+                        {
+                            // if this big play by this player was not already parsed, the big play will be added
+                            bool bigPlayAdded = AddBigPlayDetails(0, quarter, gameClock, playDetails.PlayerName, playDetails.Season, playDetails.OwnerId, log);
+
+                            if (bigPlayAdded)
+                            {
+                                var configurationBuilder = new ConfigurationBuilder()
+                                .SetBasePath(context.FunctionAppDirectory)
+                                .AddJsonFile("local.settings.json", optional: true, reloadOnChange: true)
+                                .AddEnvironmentVariables()
+                                .Build();
+
+                                log.LogInformation("Added big play for " + playDetails.PlayerName);
+                                await sendPlayMessage(playDetails, configurationBuilder);
+                            }
+                            else
+                            {
+                                log.LogInformation("Did NOT log big play for " + playDetails.PlayerName + "; big play already parsed earlier.");
+                            }
+                        }
+
+                        // reset the flag as there could be another player involved in the same play
+                        bigPlayOccurred = false;
                     }
                 }
             }
@@ -722,7 +761,7 @@ namespace PlayAlertFunction
                             // search for this player name in the players table for the current roster / matchup
                             string bigPlayText = (string)((JValue)playToken.SelectToken("text")).Value;
 
-                            // check if any of players in the players list (current roster) have scored
+                            // check if any of players in the players list (current roster) had this big play
                             foreach (PlayDetails playDetails in playersInGame)
                             {
                                 // check if the player is involved in this play
