@@ -73,6 +73,7 @@ namespace PlayAlertFunction
                 try
                 {
                     string jsonString = JsonConvert.SerializeObject(streamReader.ReadToEnd());
+                    jsonString = jsonString.Substring(1, jsonString.Length - 2);
                     log.LogInformation(jsonString);
                     JObject jsonPlayByPlayDoc = JObject.Parse(jsonString);
 
