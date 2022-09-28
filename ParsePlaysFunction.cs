@@ -75,7 +75,8 @@ namespace PlayAlertFunction
                     string jsonString = JsonConvert.SerializeObject(streamReader.ReadToEnd());
                     jsonString = jsonString.Substring(1, jsonString.Length - 2);
                     log.LogInformation(jsonString);
-                    JObject jsonPlayByPlayDoc = JObject.Parse(jsonString);
+                    //JObject jsonPlayByPlayDoc = JObject.Parse(jsonString);
+                    JObject jsonPlayByPlayDoc = (JObject) JToken.Parse(jsonString);
 
                     //string value = ((JValue)jsonPlayByPlayDoc.SelectToken("drives.current.displayResult")).Value.ToString();
                     //log.LogInformation(value);
