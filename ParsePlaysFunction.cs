@@ -74,10 +74,13 @@ namespace PlayAlertFunction
                 {
                     string jsonString = JsonConvert.SerializeObject(streamReader.ReadToEnd());
                     jsonString = jsonString.Substring(1, jsonString.Length - 2);
+                    jsonString.Replace(@"\r", @"");
+                    jsonString.Replace(@"\n", @"");
+                    jsonString.Replace(@"\", @"");
+                    
                     log.LogInformation(jsonString);
-                    //JObject jsonPlayByPlayDoc = JObject.Parse(jsonString);
-                    JObject jsonPlayByPlayDoc = (JObject) JToken.Parse(jsonString);
-
+                    JObject jsonPlayByPlayDoc = JObject.Parse(jsonString);
+                    
                     //string value = ((JValue)jsonPlayByPlayDoc.SelectToken("drives.current.displayResult")).Value.ToString();
                     //log.LogInformation(value);
 
