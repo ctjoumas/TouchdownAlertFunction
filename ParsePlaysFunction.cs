@@ -793,7 +793,7 @@ namespace PlayAlertFunction
                                             if (playYardage >= PASSING_BIG_PLAY_YARDAGE)
                                             {
                                                 bigPlayOccurred = true;
-                                                playDetails.Message = "Big play! " + playDetails.PlayerName + " threw a pass of " + playYardage;
+                                                playDetails.Message = "Big play! " + playDetails.PlayerName + " threw a pass of " + playYardage + " yards.";
                                             }
                                         }
                                         else
@@ -802,13 +802,13 @@ namespace PlayAlertFunction
 
                                             // player received a pass, and we already know it's above the threshold since that was our
                                             // first check, so just send the alert
-                                            playDetails.Message = "Big play! " + playDetails.PlayerName + " caught a pass of " + playYardage;
+                                            playDetails.Message = "Big play! " + playDetails.PlayerName + " caught a pass of " + playYardage + " yards.";
                                         }
                                     }
                                     else
                                     {
                                         bigPlayOccurred = true;
-                                        playDetails.Message = "Big play! " + playDetails.PlayerName + " rushed for " + playYardage;
+                                        playDetails.Message = "Big play! " + playDetails.PlayerName + " rushed for " + playYardage + " yards.";
                                     }
                                 }
 
