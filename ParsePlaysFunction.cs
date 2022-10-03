@@ -243,7 +243,7 @@ namespace PlayAlertFunction
                         if (bigPlayOccurred)
                         {
                             // if this big play by this player was not already parsed, the big play will be added
-                            bool bigPlayAdded = AddBigPlayDetails(0, quarter, gameClock, playDetails.PlayerName, playDetails.Season, playDetails.OwnerId, log);
+                            bool bigPlayAdded = AddBigPlayDetails(0, quarter, gameClock, playDetails.PlayerName, playDetails.Season, playDetails.OwnerId, playDetails.OpponentAbbreviation, playDetails.GameDate, log);
 
                             if (bigPlayAdded)
                             {
@@ -649,7 +649,7 @@ namespace PlayAlertFunction
                                         if (touchdownText.Contains(abbreviatedPlayerName) && (touchdownText.IndexOf("TOUCHDOWN") > touchdownText.IndexOf(abbreviatedPlayerName)))
                                         {
                                             // if this touchdown scored by this player was not already parsed, the touchdown will be added
-                                            bool touchdownAdded = AddTouchdownDetails(espnGameId, quarter, gameClock, playDetails.PlayerName, playDetails.Season, playDetails.OwnerId, log);
+                                            bool touchdownAdded = AddTouchdownDetails(espnGameId, quarter, gameClock, playDetails.PlayerName, playDetails.Season, playDetails.OwnerId, playDetails.OpponentAbbreviation, playDetails.GameDate, log);
 
                                             if (touchdownAdded)
                                             {
@@ -819,7 +819,7 @@ namespace PlayAlertFunction
                                 if (bigPlayOccurred)
                                 {
                                     // if this big play by this player was not already parsed, the big play will be added
-                                    bool bigPlayAdded = AddBigPlayDetails(espnGameId, quarter, gameClock, playDetails.PlayerName, playDetails.Season, playDetails.OwnerId, log);
+                                    bool bigPlayAdded = AddBigPlayDetails(espnGameId, quarter, gameClock, playDetails.PlayerName, playDetails.Season, playDetails.OwnerId, playDetails.OpponentAbbreviation, playDetails.GameDate, log);
 
                                     if (bigPlayAdded)
                                     {
