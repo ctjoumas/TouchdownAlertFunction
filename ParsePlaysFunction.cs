@@ -507,7 +507,7 @@ namespace PlayAlertFunction
 
                     ArrayList playersInGame = (ArrayList)gamesToParse[key];
 
-                    ParsePlayerTouchdownsForGame(int.Parse((string)key), playByPlayJsonObject, playersInGame, log, configurationBuilder);
+                    //ParsePlayerTouchdownsForGame(int.Parse((string)key), playByPlayJsonObject, playersInGame, log, configurationBuilder);
                     ParsePlayerBigPlaysForGame(int.Parse((string)key), playByPlayJsonObject, playersInGame, log, configurationBuilder);
                 }
             }
