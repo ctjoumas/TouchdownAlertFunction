@@ -435,6 +435,8 @@ namespace PlayAlertFunction
                             string ownerName = reader.GetValue(reader.GetOrdinal("OwnerName")).ToString();
                             string ownerPhoneNumber = reader.GetValue(reader.GetOrdinal("PhoneNumber")).ToString();
                             string playerName = reader.GetValue(reader.GetOrdinal("PlayerName")).ToString();
+                            string opponentAbbreviation = reader.GetValue(reader.GetOrdinal("OpponentAbbreviation")).ToString();
+                            DateTime gameDate = DateTime.Parse((reader.GetValue(reader.GetOrdinal("GameDate")).ToString()));
                             string espnGameId = reader.GetValue(reader.GetOrdinal("EspnGameId")).ToString();
 
                             PlayDetails playDetails = new PlayDetails();
@@ -442,6 +444,8 @@ namespace PlayAlertFunction
                             playDetails.OwnerId = ownerId;
                             playDetails.OwnerName = ownerName;
                             playDetails.PhoneNumber = ownerPhoneNumber;
+                            playDetails.OpponentAbbreviation = opponentAbbreviation;
+                            playDetails.GameDate = gameDate;
                             playDetails.PlayerName = playerName;
 
                             // it's more expensive to use the ContainsKey method on a hashtable, so just pull out
@@ -729,7 +733,7 @@ namespace PlayAlertFunction
                             if (touchdownText.Contains(abbreviatedPlayerName) && (touchdownText.IndexOf("TOUCHDOWN") > touchdownText.IndexOf(abbreviatedPlayerName)))
                             {
                                 // if this touchdown scored by this player was not already parsed, the touchdown will be added
-                                bool touchdownAdded = AddTouchdownDetails(espnGameId, quarter, gameClock, playDetails.PlayerName, playDetails.Season, playDetails.OwnerId, log);
+                                bool touchdownAdded = AddTouchdownDetails(espnGameId, quarter, gameClock, playDetails.PlayerName, playDetails.Season, playDetails.OwnerId, playDetails.OpponentAbbreviation, playDetails.GameDate, log);
 
                                 if (touchdownAdded)
                                 {
@@ -909,7 +913,7 @@ namespace PlayAlertFunction
         /// <param name="playerName">The player who scored the touchdown</param>
         /// <param name="log">The logger.</param>
         /// <returns></returns>
-        private bool AddTouchdownDetails(int espnGameId, int touchdownQuarter, string touchdownGameClock, string playerName, int season, int ownerId, ILogger log)
+        private bool AddTouchdownDetails(int espnGameId, int touchdownQuarter, string touchdownGameClock, string playerName, int season, int ownerId, string opponentAbbreviation, DateTime gameDate, ILogger log)
         {
             bool touchdownAdded = false;
 
@@ -947,6 +951,8 @@ namespace PlayAlertFunction
                     command.Parameters.Add(new SqlParameter("@TouchdownGameClock", System.Data.SqlDbType.NVarChar) { Value = touchdownGameClock });
                     command.Parameters.Add(new SqlParameter("@PlayerName", System.Data.SqlDbType.NVarChar) { Value = playerName });
                     command.Parameters.Add(new SqlParameter("@Season", System.Data.SqlDbType.Int) { Value = season });
+                    command.Parameters.Add(new SqlParameter("@OpponentAbbreviation", System.Data.SqlDbType.NVarChar) { Value = opponentAbbreviation });
+                    command.Parameters.Add(new SqlParameter("@GameDate", System.Data.SqlDbType.Date) { Value = gameDate });
                     command.Parameters.Add(new SqlParameter("@OwnerID", System.Data.SqlDbType.Int) { Value = ownerId });
 
                     touchdownAdded = (bool) command.ExecuteScalar();
@@ -968,7 +974,7 @@ namespace PlayAlertFunction
         /// <param name="playerName">The player who scored the touchdown</param>
         /// <param name="log">The logger.</param>
         /// <returns></returns>
-        private bool AddBigPlayDetails(int espnGameId, int quarter, string gameClock, string playerName, int season, int ownerId, ILogger log)
+        private bool AddBigPlayDetails(int espnGameId, int quarter, string gameClock, string playerName, int season, int ownerId, string opponentAbbreviation, DateTime gameDate, ILogger log)
         {
             bool bigPlayAdded = false;
 
@@ -1006,6 +1012,8 @@ namespace PlayAlertFunction
                     command.Parameters.Add(new SqlParameter("@BigPlayGameClock", System.Data.SqlDbType.NVarChar) { Value = gameClock });
                     command.Parameters.Add(new SqlParameter("@PlayerName", System.Data.SqlDbType.NVarChar) { Value = playerName });
                     command.Parameters.Add(new SqlParameter("@Season", System.Data.SqlDbType.Int) { Value = season });
+                    command.Parameters.Add(new SqlParameter("@OpponentAbbreviation", System.Data.SqlDbType.NVarChar) { Value = opponentAbbreviation });
+                    command.Parameters.Add(new SqlParameter("@GameDate", System.Data.SqlDbType.Date) { Value = gameDate });
                     command.Parameters.Add(new SqlParameter("@OwnerID", System.Data.SqlDbType.Int) { Value = ownerId });
 
                     bigPlayAdded = (bool)command.ExecuteScalar();

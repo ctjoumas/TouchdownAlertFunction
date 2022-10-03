@@ -15,6 +15,8 @@
         public string OwnerName { get; set; }
         public string PlayerName { get; set; }
         public string PhoneNumber { get; set; }
+        public string OpponentAbbreviation { get; set; }
+        public DateTime GameDate { get; set; }
         public string Message { get; set; }
     }
 }
