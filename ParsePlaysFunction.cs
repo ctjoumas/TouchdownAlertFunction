@@ -368,7 +368,7 @@ namespace PlayAlertFunction
         // {month} 9-1 is Sept-Jan
         // {day of week} 1 is Monday
         [FunctionName("ParseTouchdownsMonday")]
-        public void RunMonday([TimerTrigger("*/10 * 20-23 * 9-1 1")] TimerInfo myTimer, ILogger log, ExecutionContext context)
+        public void RunMonday([TimerTrigger("*/10 * 20-23 * 9-12 1")] TimerInfo myTimer, ILogger log, ExecutionContext context)
         {
             log.LogInformation("C# HTTP trigger function processed a request for Monday games at " + DateTime.Now);
 
