@@ -435,6 +435,7 @@ namespace PlayAlertFunction
                             string ownerName = reader.GetValue(reader.GetOrdinal("OwnerName")).ToString();
                             string ownerPhoneNumber = reader.GetValue(reader.GetOrdinal("PhoneNumber")).ToString();
                             string playerName = reader.GetValue(reader.GetOrdinal("PlayerName")).ToString();
+                            string teamAbbreviation = reader.GetValue(reader.GetOrdinal("TeamAbbreviation")).ToString();
                             string opponentAbbreviation = reader.GetValue(reader.GetOrdinal("OpponentAbbreviation")).ToString();
                             DateTime gameDate = DateTime.Parse((reader.GetValue(reader.GetOrdinal("GameDate")).ToString()));
                             string espnGameId = reader.GetValue(reader.GetOrdinal("EspnGameId")).ToString();
@@ -444,6 +445,7 @@ namespace PlayAlertFunction
                             playDetails.OwnerId = ownerId;
                             playDetails.OwnerName = ownerName;
                             playDetails.PhoneNumber = ownerPhoneNumber;
+                            playDetails.TeamAbbreviation = teamAbbreviation;
                             playDetails.OpponentAbbreviation = opponentAbbreviation;
                             playDetails.GameDate = gameDate;
                             playDetails.PlayerName = playerName;
@@ -689,68 +691,159 @@ namespace PlayAlertFunction
             // get all plays in the current drive
             JToken playTokens = playByPlayJsonObject.SelectToken("drives.current.plays");
 
-            // used to determine if a big play occured, whether it's passing, receiving, or rushing
-            bool bigPlayOccurred = false;
-
             // if the game started and there are plays in the current drive
             if (playTokens != null)
             {
+                // go through every play in the current drive
                 foreach (JToken playToken in playTokens)
                 {
-                    // TESTING TOUCHDOWN - We may be able to remove the touchdown parsing and combine it here
-                    bool isTouchdownPlay = (bool)((JValue)playToken.SelectToken("scoringPlay")).Value;
+                    // Check if this play is a scoring play so we don't alert for both a long play and a touchdown.
+                    // A scoring play can be a touchdown (offensive or defensive) and probably a field goal, safety,
+                    // blocked punt, kick, etc, but need to verify these.
+                    bool isScoringPlay = (bool)((JValue)playToken.SelectToken("scoringPlay")).Value;
 
-                    if (isTouchdownPlay)
+                    if (isScoringPlay)
                     {
-                        // get the details of the touchdown
-                        // we will cache the quarter and game clock so the next time we check the live JSON data, we don't
-                        // send a message to the service bus that the same touchdown was scored
-                        int quarter = int.Parse(playToken.SelectToken("period.number").ToString());
-                        string gameClock = (string)((JValue)playToken.SelectToken("clock.displayValue")).Value;
+                        // we have the right play, so we need to see if the scoring type is a touchdown
+                        string scoringType = ((JValue)playToken.SelectToken("scoringType.displayName")).Value.ToString();
 
-                        // the player name is displayed here, but it's usually first initial.lastname (G.Kittle), so we'd
-                        // search for this player name in the players table for the current roster / matchup
-                        string touchdownText = (string)((JValue)playToken.SelectToken("text")).Value;
-
-                        // check if any of players in the players list (current roster) have scored
-                        foreach (PlayDetails playDetails in playersInGame)
+                        if (scoringType.ToLower().Equals("touchdown"))
                         {
-                            // get the player name as first <initial>.<lastname> to check if this is the player
-                            // who scored a touchdown
-                            string abbreviatedPlayerName = playDetails.PlayerName;
-                            int spaceIndex = abbreviatedPlayerName.IndexOf(' ');
-                            abbreviatedPlayerName = abbreviatedPlayerName[0] + "." + abbreviatedPlayerName.Substring(spaceIndex + 1);
+                            // the player name is displayed here, but it's usually first initial.lastname (G.Kittle), so we'd
+                            // search for this player name in the players table for the current roster / matchup
+                            string touchdownText = (string)((JValue)playToken.SelectToken("text")).Value;
 
-                            if (touchdownText.Contains(abbreviatedPlayerName) && (touchdownText.IndexOf("TOUCHDOWN") <= touchdownText.IndexOf(abbreviatedPlayerName)))
+                            // we now need to determine if this is a defensive or offensive touchdown
+                            string touchdownType = ((JValue)playByPlayJsonObject.SelectToken("drives.current.displayResult")).Value.ToString();
+
+                            // we will cache the quarter and game clock so the next time we check the live JSON data, we don't
+                            // send a message to the service bus that the same touchdown was scored
+                            int quarter = int.Parse(playToken.SelectToken("period.number").ToString());
+                            string gameClock = (string)((JValue)playToken.SelectToken("clock.displayValue")).Value;
+
+                            // displayResult = "Touchdown" is an offensive touchdown
+                            if (touchdownType.ToLower().Equals("touchdown"))
                             {
-                                log.LogInformation("Did NOT add TD for " + playDetails.PlayerName + "; Player is a kicker.");
-                            }
+                                // check if any of players in the players list (current roster) have scored
+                                foreach (PlayDetails playDetails in playersInGame)
+                                {
+                                    // get the player name as first <initial>.<lastname> to check if this is the player
+                                    // who scored a touchdown
+                                    string abbreviatedPlayerName = playDetails.PlayerName;
+                                    int spaceIndex = abbreviatedPlayerName.IndexOf(' ');
+                                    abbreviatedPlayerName = abbreviatedPlayerName[0] + "." + abbreviatedPlayerName.Substring(spaceIndex + 1);
 
-                            // We need to make sure that this player is the player who scored the TD and not the kicker kicking the XP. The
-                            // format of the text in the JSON Play By Play will be:
-                            // "text": "(5:30) (Shotgun) D.Samuel left end for 8 yards, TOUCHDOWN. R.Gould extra point is GOOD, Center-T.Pepper, Holder-M.Wishnowsky."
-                            // It should be enough to ensure the occurence of the player has to be before the occurence of the text "TOUCHDOWN"
-                            if (touchdownText.Contains(abbreviatedPlayerName) && (touchdownText.IndexOf("TOUCHDOWN") > touchdownText.IndexOf(abbreviatedPlayerName)))
+                                    if (touchdownText.Contains(abbreviatedPlayerName) && (touchdownText.IndexOf("TOUCHDOWN") <= touchdownText.IndexOf(abbreviatedPlayerName)))
+                                    {
+                                        log.LogInformation("Did NOT add TD for " + playDetails.PlayerName + "; Player is a kicker.");
+                                    }
+
+                                    // We need to make sure that this player is the player who scored the TD and not the kicker kicking the XP. The
+                                    // format of the text in the JSON Play By Play will be:
+                                    // "text": "(5:30) (Shotgun) D.Samuel left end for 8 yards, TOUCHDOWN. R.Gould extra point is GOOD, Center-T.Pepper, Holder-M.Wishnowsky."
+                                    // It should be enough to ensure the occurence of the player has to be before the occurence of the text "TOUCHDOWN"
+                                    if (touchdownText.Contains(abbreviatedPlayerName) && (touchdownText.IndexOf("TOUCHDOWN") > touchdownText.IndexOf(abbreviatedPlayerName)))
+                                    {
+                                        // if this touchdown scored by this player was not already parsed, the touchdown will be added
+                                        bool touchdownAdded = AddTouchdownDetails(espnGameId, quarter, gameClock, playDetails.PlayerName, playDetails.Season, playDetails.OwnerId, playDetails.OpponentAbbreviation, playDetails.GameDate, log);
+
+                                        if (touchdownAdded)
+                                        {
+                                            playDetails.Message = playDetails.PlayerName + " scored a touchdown!";
+
+                                            log.LogInformation(playDetails.PlayerName + " scored a touchdown!");
+                                            
+                                            await sendPlayMessage(playDetails, configurationBuilder);
+                                        }
+                                        else
+                                        {
+                                            log.LogInformation("Did NOT log TD for " + playDetails.PlayerName + "; TD already parsed earlier.");
+                                        }
+                                    }
+                                }
+
+                            }
+                            // displayResult = "Interception Touchdown" is a pick six, so we need to figure out the defense
+                            else if (touchdownType.ToLower().Equals("interception touchdown"))
                             {
-                                // if this touchdown scored by this player was not already parsed, the touchdown will be added
-                                bool touchdownAdded = AddTouchdownDetails(espnGameId, quarter, gameClock, playDetails.PlayerName, playDetails.Season, playDetails.OwnerId, playDetails.OpponentAbbreviation, playDetails.GameDate, log);
+                                // get the defensive player's name who intercepted the ball
+                                // this will be "...INTERCEPTED by T.Hufanga at..." in the text node
+                                int interceptedIndex = touchdownText.IndexOf("INTERCEPTED");
+                                int textLengthOfInterceptedText = "INTERCEPTED by".Length;
+                                int firstSpaceIndex = touchdownText.IndexOf(" ", interceptedIndex + textLengthOfInterceptedText);
+                                int lastSpaceIndex = touchdownText.IndexOf(" ", firstSpaceIndex + 1);
+                                string defensivePlayerShortName = touchdownText.Substring(firstSpaceIndex + 1, lastSpaceIndex - (firstSpaceIndex + 1));
 
-                                if (touchdownAdded)
+                                // now look under "participants" and find this player and the team name abbreviation; from there, 
+                                // we will see if the team name abbreviation (i.e. sf) is one of the defenses an owner has
+                                JToken participantsTokens = playToken.SelectToken("participants");
+                                foreach (JToken participantToken in participantsTokens)
                                 {
-                                    playDetails.Message = playDetails.PlayerName + " scored a touchdown! (FROM BIG PLAY FUNCTION)";
+                                    string athleteShortName = participantToken.SelectToken("athlete.shortName").ToString();
 
-                                    log.LogInformation("Added TD for " + playDetails.PlayerName);
-                                    await sendPlayMessage(playDetails, configurationBuilder);
-                                }
-                                else
-                                {
-                                    log.LogInformation("Did NOT log TD for " + playDetails.PlayerName + "; TD already parsed earlier.");
+                                    // we need to remove any spaces here; for some reason, this value will have a space between first initial
+                                    // and last name
+                                    athleteShortName = athleteShortName.Replace(" ", "");
+
+                                    if (athleteShortName.Equals(defensivePlayerShortName))
+                                    {
+                                        // let's find the team abbreviation so we can use this to check against the player name
+                                        string teamAbbreviation = participantToken.SelectToken("athlete.team.abbreviation").ToString();
+
+                                        // go through only the defenses in the list of players for each owner to see if there is a match
+                                        foreach (PlayDetails playDetails in playersInGame)
+                                        {
+                                            if (playDetails.PlayerPosition.Equals("DEF") && (teamAbbreviation.ToLower().Equals(playDetails.TeamAbbreviation)))
+                                            {
+                                                // if this touchdown scored by this player was not already parsed, the touchdown will be added
+                                                bool touchdownAdded = AddTouchdownDetails(espnGameId, quarter, gameClock, playDetails.PlayerName, playDetails.Season, playDetails.OwnerId, playDetails.OpponentAbbreviation, playDetails.GameDate, log);
+
+                                                if (touchdownAdded)
+                                                {
+                                                    playDetails.Message = playDetails.PlayerName + " scored a touchdown!";
+
+                                                    log.LogInformation(playDetails.PlayerName + " got a pick 6!");
+                                                    await sendPlayMessage(playDetails, configurationBuilder);
+                                                }
+                                                else
+                                                {
+                                                    log.LogInformation("Did NOT log TD for " + playDetails.PlayerName + "; TD already parsed earlier.");
+                                                }
+
+                                                // there is only one defense, so we can break out
+                                                break;
+                                            }
+                                        }
+
+                                        // at this point, we found the player who made the pick six, so we don't need to continue this loop of participants
+                                        break;
+                                    }
                                 }
                             }
+                            /*else if ("fumble touchdown???")
+                            {
+
+                            }
+                            else if ("field goal")
+                            {
+                                // ignore field goals
+                            }*/
                         }
+                        //else if (scoringType.ToLower().Equals("safety"))
+                        //{
+
+                        //}
+                        //else if (scoringType.ToLower().Equals("blocked punt / kick"))
+                        //{
+
+                        //}
                     }
+                    // this isn't a scoring play, so check if it's a big play
                     else
                     {
+                        // used to determine if a big play occured, whether it's passing, receiving, or rushing
+                        bool bigPlayOccurred = false;
+
                         // we can get the yardage of the play from the statYardage property
                         int playYardage = (int)Int64.Parse(((JValue)playToken.SelectToken("statYardage")).Value.ToString());
 
@@ -769,7 +862,6 @@ namespace PlayAlertFunction
                             // search for this player name in the players table for the current roster / matchup
                             string bigPlayText = (string)((JValue)playToken.SelectToken("text")).Value;
 
-                            // check if any of players in the players list (current roster) had this big play
                             foreach (PlayDetails playDetails in playersInGame)
                             {
                                 // check if the player is involved in this play
@@ -813,30 +905,27 @@ namespace PlayAlertFunction
                                         bigPlayOccurred = true;
                                         playDetails.Message = "Big play! " + playDetails.PlayerName + " rushed for " + playYardage + " yards.";
                                     }
-                                }
 
-                                // if a big play occurred, let's add it to the database
-                                if (bigPlayOccurred)
-                                {
-                                    // if this big play by this player was not already parsed, the big play will be added
-                                    bool bigPlayAdded = AddBigPlayDetails(espnGameId, quarter, gameClock, playDetails.PlayerName, playDetails.Season, playDetails.OwnerId, playDetails.OpponentAbbreviation, playDetails.GameDate, log);
-
-                                    if (bigPlayAdded)
+                                    // if a big play occurred, let's add it to the database
+                                    if (bigPlayOccurred)
                                     {
-                                        log.LogInformation("Added big play for " + playDetails.PlayerName);
-                                        await sendPlayMessage(playDetails, configurationBuilder);
-                                    }
-                                    else
-                                    {
-                                        log.LogInformation("Did NOT log big play for " + playDetails.PlayerName + "; big play already parsed earlier.");
+                                        // if this big play by this player was not already parsed, the big play will be added
+                                        bool bigPlayAdded = AddBigPlayDetails(espnGameId, quarter, gameClock, playDetails.PlayerName, playDetails.Season, playDetails.OwnerId, playDetails.OpponentAbbreviation, playDetails.GameDate, log);
+
+                                        if (bigPlayAdded)
+                                        {
+                                            log.LogInformation("Added big play for " + playDetails.PlayerName);
+                                            await sendPlayMessage(playDetails, configurationBuilder);
+                                        }
+                                        else
+                                        {
+                                            log.LogInformation("Did NOT log big play for " + playDetails.PlayerName + "; big play already parsed earlier.");
+                                        }
                                     }
                                 }
-
-                                // reset the flag as there could be another player involved in the same play
-                                bigPlayOccurred = false;
                             }
                         }
-                    }                    
+                    }
                 }
             }
         }
