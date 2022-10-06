@@ -724,6 +724,9 @@ namespace PlayAlertFunction
                             // displayResult = "Touchdown" is an offensive touchdown
                             if (touchdownType.ToLower().Equals("touchdown"))
                             {
+                                // get yardage of the touchdown
+                                int scoringPlayYardage = (int)Int64.Parse(((JValue)playToken.SelectToken("statYardage")).Value.ToString());
+
                                 // check if any of players in the players list (current roster) have scored
                                 foreach (PlayDetails playDetails in playersInGame)
                                 {
@@ -739,19 +742,36 @@ namespace PlayAlertFunction
                                     }
 
                                     // We need to make sure that this player is the player who scored the TD and not the kicker kicking the XP. The
-                                    // format of the text in the JSON Play By Play will be:
+                                    // format of the text in the JSON Play By Play will be the following for a rushing and passing touchdown:
                                     // "text": "(5:30) (Shotgun) D.Samuel left end for 8 yards, TOUCHDOWN. R.Gould extra point is GOOD, Center-T.Pepper, Holder-M.Wishnowsky."
+                                    //"text": "(8:55) (Shotgun) T.Brady pass short middle to M.Evans for 13 yards, TOUCHDOWN. R.Succop extra point is GOOD, Center-Z.Triner, Holder-J.Camarda."
                                     // It should be enough to ensure the occurence of the player has to be before the occurence of the text "TOUCHDOWN"
-                                    if (touchdownText.Contains(abbreviatedPlayerName) && (touchdownText.IndexOf("TOUCHDOWN") > touchdownText.IndexOf(abbreviatedPlayerName)))
+                                    else if (touchdownText.Contains(abbreviatedPlayerName) && (touchdownText.IndexOf("TOUCHDOWN") > touchdownText.IndexOf(abbreviatedPlayerName)))
                                     {
+                                        // check if this was a passing touchdown and whether this player passed or received
+                                        if (touchdownText.Contains("pass"))
+                                        {
+                                            // if this player threw the pass, their name will be to the left of the word "pass"
+                                            if (touchdownText.IndexOf("pass") > touchdownText.IndexOf(abbreviatedPlayerName))
+                                            {
+                                                playDetails.Message = "Touchdown! " + playDetails.PlayerName + " threw a " + scoringPlayYardage + " yard TD!";
+                                            }
+                                            else
+                                            {
+                                                playDetails.Message = "Touchdown! " + playDetails.PlayerName + " caught a " + scoringPlayYardage + " yard TD!";
+                                            }
+                                        }
+                                        else
+                                        {
+                                            playDetails.Message = "Touchdown! " + playDetails.PlayerName + " ran for a " + scoringPlayYardage + " yard TD!";
+                                        }
+
                                         // if this touchdown scored by this player was not already parsed, the touchdown will be added
                                         bool touchdownAdded = AddTouchdownDetails(espnGameId, quarter, gameClock, playDetails.PlayerName, playDetails.Season, playDetails.OwnerId, playDetails.OpponentAbbreviation, playDetails.GameDate, log);
 
                                         if (touchdownAdded)
                                         {
-                                            playDetails.Message = playDetails.PlayerName + " scored a touchdown!";
-
-                                            log.LogInformation(playDetails.PlayerName + " scored a touchdown!");
+                                            log.LogInformation(playDetails.Message);
                                             
                                             await sendPlayMessage(playDetails, configurationBuilder);
                                         }
@@ -795,14 +815,14 @@ namespace PlayAlertFunction
                                         {
                                             if (playDetails.PlayerPosition.Equals("DEF") && (teamAbbreviation.ToLower().Equals(playDetails.TeamAbbreviation)))
                                             {
-                                                // if this touchdown scored by this player was not already parsed, the touchdown will be added
+                                                // if this touchdown scored by this defense was not already parsed, the touchdown will be added
                                                 bool touchdownAdded = AddTouchdownDetails(espnGameId, quarter, gameClock, playDetails.PlayerName, playDetails.Season, playDetails.OwnerId, playDetails.OpponentAbbreviation, playDetails.GameDate, log);
 
                                                 if (touchdownAdded)
                                                 {
-                                                    playDetails.Message = playDetails.PlayerName + " scored a touchdown!";
+                                                    playDetails.Message = "Defensive Touchdown! " + playDetails.PlayerName + " got a pick 6!";
 
-                                                    log.LogInformation(playDetails.PlayerName + " got a pick 6!");
+                                                    log.LogInformation(playDetails.Message);
                                                     await sendPlayMessage(playDetails, configurationBuilder);
                                                 }
                                                 else
