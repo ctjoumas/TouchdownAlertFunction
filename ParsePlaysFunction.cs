@@ -437,40 +437,50 @@ namespace PlayAlertFunction
                             string playerName = reader.GetValue(reader.GetOrdinal("PlayerName")).ToString();
                             string teamAbbreviation = reader.GetValue(reader.GetOrdinal("TeamAbbreviation")).ToString();
                             string opponentAbbreviation = reader.GetValue(reader.GetOrdinal("OpponentAbbreviation")).ToString();
+                            bool gameEnded = (bool)reader.GetValue(reader.GetOrdinal("GameEnded"));
                             DateTime gameDate = DateTime.Parse((reader.GetValue(reader.GetOrdinal("GameDate")).ToString()));
                             string espnGameId = reader.GetValue(reader.GetOrdinal("EspnGameId")).ToString();
 
-                            PlayDetails playDetails = new PlayDetails();
-                            playDetails.Season = season;
-                            playDetails.OwnerId = ownerId;
-                            playDetails.OwnerName = ownerName;
-                            playDetails.PhoneNumber = ownerPhoneNumber;
-                            playDetails.TeamAbbreviation = teamAbbreviation;
-                            playDetails.OpponentAbbreviation = opponentAbbreviation;
-                            playDetails.GameDate = gameDate;
-                            playDetails.PlayerName = playerName;
+                            // Get current EST time - If this is run on a machine with a differnet local time, DateTime.Now will not return the proper time
+                            TimeZoneInfo easternZone = TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time");
+                            DateTime currentEasterStandardTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, easternZone);
+                            TimeSpan difference = gameDate.Subtract(currentEasterStandardTime);
 
-                            // it's more expensive to use the ContainsKey method on a hashtable, so just pull out
-                            // the value and check if it's null
-                            ArrayList playerList = (ArrayList)gamesToParse[espnGameId];
-
-                            // if it's not null, the game exists in the hashtable, so let's remove the item so we can add the
-                            // touchdown details for this player to the list and re-add the key/value pair with this new player's
-                            // touchdown details. Oherwise, we will create an empty ArrayList for the players touchdown details so
-                            // we can add the touchdown details and put the new game key/value pair into the hashtable
-                            if (playerList != null)
+                            // if the game hasn't started or the game has ended, don't load the HtmlDoc to parse stats since we've already done that
+                            if ((difference.TotalDays < 0) && (!gameEnded))
                             {
-                                gamesToParse.Remove(espnGameId);
-                            }
-                            else
-                            {
-                                playerList = new ArrayList();
-                            }
+                                PlayDetails playDetails = new PlayDetails();
+                                playDetails.Season = season;
+                                playDetails.OwnerId = ownerId;
+                                playDetails.OwnerName = ownerName;
+                                playDetails.PhoneNumber = ownerPhoneNumber;
+                                playDetails.TeamAbbreviation = teamAbbreviation;
+                                playDetails.OpponentAbbreviation = opponentAbbreviation;
+                                playDetails.GameDate = gameDate;
+                                playDetails.PlayerName = playerName;
 
-                            playerList.Add(playDetails);
-                            gamesToParse.Add(espnGameId, playerList);
+                                // it's more expensive to use the ContainsKey method on a hashtable, so just pull out
+                                // the value and check if it's null
+                                ArrayList playerList = (ArrayList)gamesToParse[espnGameId];
 
-                            log.LogInformation("player name: " + playerName + "(" + ownerPhoneNumber + ")");
+                                // if it's not null, the game exists in the hashtable, so let's remove the item so we can add the
+                                // touchdown details for this player to the list and re-add the key/value pair with this new player's
+                                // touchdown details. Oherwise, we will create an empty ArrayList for the players touchdown details so
+                                // we can add the touchdown details and put the new game key/value pair into the hashtable
+                                if (playerList != null)
+                                {
+                                    gamesToParse.Remove(espnGameId);
+                                }
+                                else
+                                {
+                                    playerList = new ArrayList();
+                                }
+
+                                playerList.Add(playDetails);
+                                gamesToParse.Add(espnGameId, playerList);
+
+                                log.LogInformation("player name: " + playerName + "(" + ownerPhoneNumber + ")");
+                            }
                         }
                     }
                 }
@@ -514,7 +524,7 @@ namespace PlayAlertFunction
                     ArrayList playersInGame = (ArrayList)gamesToParse[key];
 
                     //ParsePlayerTouchdownsForGame(int.Parse((string)key), playByPlayJsonObject, playersInGame, log, configurationBuilder);
-                    ParsePlayerBigPlaysForGame(int.Parse((string)key), playByPlayJsonObject, playersInGame, log, configurationBuilder);
+                    ParsePlayerBigPlaysAndTouchdownsForGame(int.Parse((string)key), playByPlayJsonObject, playersInGame, log, configurationBuilder);
                 }
             }
         }
@@ -565,128 +575,14 @@ namespace PlayAlertFunction
         }            
 
         /// <summary>
-        /// Parses the JSON object for the given game to see if any of the players playing in this
-        /// game have scored a touchdown. If the touchdown has not yet been texted to the owner, based
-        /// on game clock stored as last parsed touchdown in the database, an alert will be sent to
-        /// the owner.
-        /// </summary>
-        /// <param name="playByPlayJsonObject"></param>
-        /// <param name="playersInGame"></param>
-        private async void ParsePlayerTouchdownsForGame(int espnGameId, JObject playByPlayJsonObject, ArrayList playersInGame, ILogger log, IConfiguration configurationBuilder)
-        {
-            // each play token is a drive, so we will go through this to parse all player stats
-            JToken driveTokens = playByPlayJsonObject.SelectToken("drives.previous");
-
-            // if the game started and there are no drives yet
-            if (driveTokens != null)
-            {
-                foreach (JToken driveToken in driveTokens)
-                {
-                    JToken driveResultValue = driveToken.SelectToken("displayResult");
-
-                    if (driveResultValue != null)
-                    {
-                        // if a touchdown is scored, the text will be "Touchdown"
-                        string driveResult = ((JValue)driveToken.SelectToken("displayResult")).Value.ToString();
-
-                        if (driveResult == null)
-                        {
-                            log.LogInformation("Drive Result is NULL! Need to check why...");
-                        }
-
-                        // only parse the plays in this drive if this drive resulted in a made touchdown
-                        if (driveResult.ToLower().Equals(("touchdown")))
-                        {
-                            // get the number of plays
-                            int numPlays = ((JArray)driveToken.SelectToken("plays")).Count;
-
-                            // in rare cases, if a play occurs just before a quarter ends and is the last play, this last play
-                            // node may be just showing the end of the quarter and not actually a play in the drive. THis would be
-                            // missing the "scoringType" node, so we can check first if this exists in the last node. If not, then
-                            // we will move back a node. It should be the second to last, but we will keep going back until we find
-                            // the touchdown play.
-                            int lastPlayOfDriveIndex = numPlays - 1;
-                            bool touchdownPlayFound = false;
-
-                            while (!touchdownPlayFound)
-                            {
-                                // the last node of the plays node will have the scoring play
-                                JToken playToken = driveToken.SelectToken("plays[" + (numPlays - 1) + "]");
-
-                                // check if the scoringType node exists
-                                JToken scoringTypeToken = playToken.SelectToken("scoringType.displayName");
-
-                                if (scoringTypeToken != null)
-                                {
-                                    touchdownPlayFound = true;
-
-                                    // get the details of the touchdown
-                                    // we will cache the quarter and game clock so the next time we check the live JSON data, we don't
-                                    // send a message to the service bus that the same touchdown was scored
-                                    int quarter = int.Parse(playToken.SelectToken("period.number").ToString());
-                                    string gameClock = (string)((JValue)playToken.SelectToken("clock.displayValue")).Value;
-
-                                    // the player name is displayed here, but it's usually first initial.lastname (G.Kittle), so we'd
-                                    // search for this player name in the players table for the current roster / matchup
-                                    string touchdownText = (string)((JValue)playToken.SelectToken("text")).Value;
-
-                                    // check if any of players in the players list (current roster) have scored
-                                    foreach (PlayDetails playDetails in playersInGame)
-                                    {
-                                        // get the player name as first <initial>.<lastname> to check if this is the player
-                                        // who scored a touchdown
-                                        string abbreviatedPlayerName = playDetails.PlayerName;
-                                        int spaceIndex = abbreviatedPlayerName.IndexOf(' ');
-                                        abbreviatedPlayerName = abbreviatedPlayerName[0] + "." + abbreviatedPlayerName.Substring(spaceIndex + 1);
-
-                                        if (touchdownText.Contains(abbreviatedPlayerName) && (touchdownText.IndexOf("TOUCHDOWN") <= touchdownText.IndexOf(abbreviatedPlayerName)))
-                                        {
-                                            log.LogInformation("Did NOT add TD for " + playDetails.PlayerName + "; Player is a kicker.");
-                                        }
-
-                                        // We need to make sure that this player is the player who scored the TD and not the kicker kicking the XP. The
-                                        // format of the text in the JSON Play By Play will be:
-                                        // "text": "(5:30) (Shotgun) D.Samuel left end for 8 yards, TOUCHDOWN. R.Gould extra point is GOOD, Center-T.Pepper, Holder-M.Wishnowsky."
-                                        // It should be enough to ensure the occurence of the player has to be before the occurence of the text "TOUCHDOWN"
-                                        if (touchdownText.Contains(abbreviatedPlayerName) && (touchdownText.IndexOf("TOUCHDOWN") > touchdownText.IndexOf(abbreviatedPlayerName)))
-                                        {
-                                            // if this touchdown scored by this player was not already parsed, the touchdown will be added
-                                            bool touchdownAdded = AddTouchdownDetails(espnGameId, quarter, gameClock, playDetails.PlayerName, playDetails.Season, playDetails.OwnerId, playDetails.OpponentAbbreviation, playDetails.GameDate, log);
-
-                                            if (touchdownAdded)
-                                            {
-                                                playDetails.Message = playDetails.PlayerName + " scored a touchdown!";
-
-                                                log.LogInformation("Added TD for " + playDetails.PlayerName);
-                                                await sendPlayMessage(playDetails, configurationBuilder);
-                                            }
-                                            else
-                                            {
-                                                log.LogInformation("Did NOT log TD for " + playDetails.PlayerName + "; TD already parsed earlier.");
-                                            }
-                                        }
-                                    }
-                                }
-                                else
-                                {
-                                    lastPlayOfDriveIndex--;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        /// <summary>
         /// Parses the current drive of the JSON object for the given game to see if any of the players
-        /// playing in this game just got a big play. If the touchdown has not yet been texted to the
-        /// owner, based on game clock stored as last parsed touchdown in the database, an alert will be
-        /// sent to the owner.
+        /// playing in this game just got a big play or a touchdown. If the touchdown has not yet been
+        /// texted to the owner, based on game clock stored as last parsed touchdown in the database, a
+        /// text will be sent to the owner.
         /// </summary>
         /// <param name="playByPlayJsonObject"></param>
         /// <param name="playersInGame"></param>
-        private async void ParsePlayerBigPlaysForGame(int espnGameId, JObject playByPlayJsonObject, ArrayList playersInGame, ILogger log, IConfiguration configurationBuilder)
+        private async void ParsePlayerBigPlaysAndTouchdownsForGame(int espnGameId, JObject playByPlayJsonObject, ArrayList playersInGame, ILogger log, IConfiguration configurationBuilder)
         {
             // get all plays in the current drive
             JToken playTokens = playByPlayJsonObject.SelectToken("drives.current.plays");
@@ -895,10 +791,9 @@ namespace PlayAlertFunction
                                 if (bigPlayText.Contains(abbreviatedPlayerName))
                                 {
                                     string playType = ((JValue)playToken.SelectToken("type.abbreviation")).ToString();
-                                    bool passingPlay = playType.ToLower().Equals("rec") ? true : false;
-
+                                    
                                     // If this is a pass play, we need to determine if this player threw the ball or received it
-                                    if (passingPlay)
+                                    if (playType.ToLower().Equals("rec"))
                                     {
                                         // If the occurence of the word "pass" occurs after the player name, then this player threw the pass;
                                         // otherwise, the player received it
@@ -920,7 +815,7 @@ namespace PlayAlertFunction
                                             playDetails.Message = "Big play! " + playDetails.PlayerName + " caught a pass of " + playYardage + " yards.";
                                         }
                                     }
-                                    else
+                                    else if (playType.ToLower().Equals("rush"))
                                     {
                                         bigPlayOccurred = true;
                                         playDetails.Message = "Big play! " + playDetails.PlayerName + " rushed for " + playYardage + " yards.";
