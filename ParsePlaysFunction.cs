@@ -1,4 +1,4 @@
-namespace PlayAlertFunction
+﻿namespace PlayAlertFunction
 {
     using Azure.Core;
     using Azure.Identity;
@@ -648,16 +648,16 @@ namespace PlayAlertFunction
                                             // if this player threw the pass, their name will be to the left of the word "pass"
                                             if (touchdownText.IndexOf("pass") > touchdownText.IndexOf(abbreviatedPlayerName))
                                             {
-                                                playDetails.Message = "?? Touchdown! " + playDetails.PlayerName + " threw a " + scoringPlayYardage + " yard TD!";
+                                                playDetails.Message = "🎉 Touchdown! " + playDetails.PlayerName + " threw a " + scoringPlayYardage + " yard TD!";
                                             }
                                             else
                                             {
-                                                playDetails.Message = "?? Touchdown! " + playDetails.PlayerName + " caught a " + scoringPlayYardage + " yard TD!";
+                                                playDetails.Message = "🎉 Touchdown! " + playDetails.PlayerName + " caught a " + scoringPlayYardage + " yard TD!";
                                             }
                                         }
                                         else
                                         {
-                                            playDetails.Message = "?? Touchdown! " + playDetails.PlayerName + " ran for a " + scoringPlayYardage + " yard TD!";
+                                            playDetails.Message = "🎉 Touchdown! " + playDetails.PlayerName + " ran for a " + scoringPlayYardage + " yard TD!";
                                         }
 
                                         // if this touchdown scored by this player was not already parsed, the touchdown will be added
@@ -714,7 +714,7 @@ namespace PlayAlertFunction
 
                                                 if (touchdownAdded)
                                                 {
-                                                    playDetails.Message = "?? Defensive Touchdown! " + playDetails.PlayerName + " got a pick 6!";
+                                                    playDetails.Message = "🎉 Defensive Touchdown! " + playDetails.PlayerName + " got a pick 6!";
 
                                                     log.LogInformation(playDetails.Message);
                                                     await sendPlayMessage(playDetails, configurationBuilder);
@@ -801,7 +801,7 @@ namespace PlayAlertFunction
                                             if (playYardage >= PASSING_BIG_PLAY_YARDAGE)
                                             {
                                                 bigPlayOccurred = true;
-                                                playDetails.Message = "?? Big play! " + playDetails.PlayerName + " threw a pass of " + playYardage + " yards.";
+                                                playDetails.Message = "🚀 Big play! " + playDetails.PlayerName + " threw a pass of " + playYardage + " yards.";
                                             }
                                         }
                                         else
@@ -810,13 +810,13 @@ namespace PlayAlertFunction
 
                                             // player received a pass, and we already know it's above the threshold since that was our
                                             // first check, so just send the alert
-                                            playDetails.Message = "?? Big play! " + playDetails.PlayerName + " caught a pass of " + playYardage + " yards.";
+                                            playDetails.Message = "🚀 Big play! " + playDetails.PlayerName + " caught a pass of " + playYardage + " yards.";
                                         }
                                     }
                                     else if (playType.ToLower().Equals("rush"))
                                     {
                                         bigPlayOccurred = true;
-                                        playDetails.Message = "?? Big play! " + playDetails.PlayerName + " rushed for " + playYardage + " yards.";
+                                        playDetails.Message = "🚀 Big play! " + playDetails.PlayerName + " rushed for " + playYardage + " yards.";
                                     }
 
                                     // if a big play occurred, let's add it to the database
