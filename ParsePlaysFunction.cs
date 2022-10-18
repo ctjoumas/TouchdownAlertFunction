@@ -957,7 +957,7 @@
                     command.Parameters.Add(new SqlParameter("@OpponentAbbreviation", System.Data.SqlDbType.NVarChar) { Value = opponentAbbreviation });
                     command.Parameters.Add(new SqlParameter("@GameDate", System.Data.SqlDbType.Date) { Value = gameDate });
                     command.Parameters.Add(new SqlParameter("@OwnerID", System.Data.SqlDbType.Int) { Value = ownerId });
-                    command.Parameters.Add(new SqlParameter("@TouchdownTimeStamp", System.Data.SqlDbType.Date) { Value = currentEasterStandardTime });
+                    command.Parameters.Add(new SqlParameter("@TouchdownTimeStamp", System.Data.SqlDbType.DateTime) { Value = currentEasterStandardTime });
 
                     touchdownAdded = (bool) command.ExecuteScalar();
                 }
@@ -1023,7 +1023,7 @@
                     command.Parameters.Add(new SqlParameter("@OpponentAbbreviation", System.Data.SqlDbType.NVarChar) { Value = opponentAbbreviation });
                     command.Parameters.Add(new SqlParameter("@GameDate", System.Data.SqlDbType.Date) { Value = gameDate });
                     command.Parameters.Add(new SqlParameter("@OwnerID", System.Data.SqlDbType.Int) { Value = ownerId });
-                    command.Parameters.Add(new SqlParameter("@BigPlayTimeStamp", System.Data.SqlDbType.Date) { Value = currentEasterStandardTime });
+                    command.Parameters.Add(new SqlParameter("@BigPlayTimeStamp", System.Data.SqlDbType.DateTime) { Value = currentEasterStandardTime });
 
                     bigPlayAdded = (bool)command.ExecuteScalar();
                 }
