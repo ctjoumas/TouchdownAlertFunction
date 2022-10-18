@@ -936,6 +936,10 @@
                 log.LogInformation(e.Message);
             }
 
+            // Get current EST time - If this is run on a machine with a differnet local time, DateTime.Now will not return the proper time
+            TimeZoneInfo easternZone = TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time");
+            DateTime currentEasterStandardTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, easternZone);
+
             using (sqlConnection)
             {
                 sqlConnection.Open();
@@ -953,6 +957,7 @@
                     command.Parameters.Add(new SqlParameter("@OpponentAbbreviation", System.Data.SqlDbType.NVarChar) { Value = opponentAbbreviation });
                     command.Parameters.Add(new SqlParameter("@GameDate", System.Data.SqlDbType.Date) { Value = gameDate });
                     command.Parameters.Add(new SqlParameter("@OwnerID", System.Data.SqlDbType.Int) { Value = ownerId });
+                    command.Parameters.Add(new SqlParameter("@BigPlayTimeStamp", System.Data.SqlDbType.Date) { Value = currentEasterStandardTime });
 
                     touchdownAdded = (bool) command.ExecuteScalar();
                 }
@@ -997,6 +1002,10 @@
                 log.LogInformation(e.Message);
             }
 
+            // Get current EST time - If this is run on a machine with a differnet local time, DateTime.Now will not return the proper time
+            TimeZoneInfo easternZone = TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time");
+            DateTime currentEasterStandardTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, easternZone);
+
             using (sqlConnection)
             {
                 sqlConnection.Open();
@@ -1014,6 +1023,7 @@
                     command.Parameters.Add(new SqlParameter("@OpponentAbbreviation", System.Data.SqlDbType.NVarChar) { Value = opponentAbbreviation });
                     command.Parameters.Add(new SqlParameter("@GameDate", System.Data.SqlDbType.Date) { Value = gameDate });
                     command.Parameters.Add(new SqlParameter("@OwnerID", System.Data.SqlDbType.Int) { Value = ownerId });
+                    command.Parameters.Add(new SqlParameter("@BigPlayTimeStamp", System.Data.SqlDbType.Date) { Value = currentEasterStandardTime });
 
                     bigPlayAdded = (bool)command.ExecuteScalar();
                 }
