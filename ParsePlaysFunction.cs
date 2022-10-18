@@ -955,7 +955,7 @@
                     command.Parameters.Add(new SqlParameter("@PlayerName", System.Data.SqlDbType.NVarChar) { Value = playerName });
                     command.Parameters.Add(new SqlParameter("@Season", System.Data.SqlDbType.Int) { Value = season });
                     command.Parameters.Add(new SqlParameter("@OpponentAbbreviation", System.Data.SqlDbType.NVarChar) { Value = opponentAbbreviation });
-                    command.Parameters.Add(new SqlParameter("@GameDate", System.Data.SqlDbType.Date) { Value = gameDate });
+                    command.Parameters.Add(new SqlParameter("@GameDate", System.Data.SqlDbType.DateTime) { Value = gameDate });
                     command.Parameters.Add(new SqlParameter("@OwnerID", System.Data.SqlDbType.Int) { Value = ownerId });
                     command.Parameters.Add(new SqlParameter("@TouchdownTimeStamp", System.Data.SqlDbType.DateTime) { Value = currentEasterStandardTime });
 
@@ -1021,7 +1021,7 @@
                     command.Parameters.Add(new SqlParameter("@PlayerName", System.Data.SqlDbType.NVarChar) { Value = playerName });
                     command.Parameters.Add(new SqlParameter("@Season", System.Data.SqlDbType.Int) { Value = season });
                     command.Parameters.Add(new SqlParameter("@OpponentAbbreviation", System.Data.SqlDbType.NVarChar) { Value = opponentAbbreviation });
-                    command.Parameters.Add(new SqlParameter("@GameDate", System.Data.SqlDbType.Date) { Value = gameDate });
+                    command.Parameters.Add(new SqlParameter("@GameDate", System.Data.SqlDbType.DateTime) { Value = gameDate });
                     command.Parameters.Add(new SqlParameter("@OwnerID", System.Data.SqlDbType.Int) { Value = ownerId });
                     command.Parameters.Add(new SqlParameter("@BigPlayTimeStamp", System.Data.SqlDbType.DateTime) { Value = currentEasterStandardTime });
 
