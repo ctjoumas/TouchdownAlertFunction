@@ -648,7 +648,31 @@
                                             // if this player threw the pass, their name will be to the left of the word "pass"
                                             if (touchdownText.IndexOf("pass") > touchdownText.IndexOf(abbreviatedPlayerName))
                                             {
-                                                playDetails.Message = "🎉 Touchdown! " + playDetails.PlayerName + " threw a " + scoringPlayYardage + " yard TD!";
+                                                // find the name of the player this player threw a TD to, which will be in between the words "to" and the space after the players name
+                                                int indexOfWordBeforeReceiverName = touchdownText.IndexOf("to");
+                                                int indexOfSpaceAfterReceiverName = touchdownText.IndexOf(" ", indexOfWordBeforeReceiverName + ("to".Length + 2));
+                                                string receiversName = touchdownText.Substring(indexOfWordBeforeReceiverName + ("to".Length + 1), indexOfSpaceAfterReceiverName - (indexOfWordBeforeReceiverName + ("to".Length + 1)));
+
+                                                // The receiver's name will be first initial . last name (like T.Kelce), so let's look at the participants array
+                                                // in the JSON and find the full name of the player
+                                                string playerLastName = receiversName.Substring(receiversName.IndexOf(".") + 1);
+
+                                                // no go through the list of participants of this play to find the full name of this player by just
+                                                // matching the last name, which will hopefully be good enough.
+                                                JToken participantTokens = playToken.SelectToken("participants");
+
+                                                foreach (JToken participantToken in participantTokens)
+                                                {
+                                                    string receiverLastName = (string)((JValue)participantToken.SelectToken("athlete.lastName")).Value;
+
+                                                    if (playerLastName.Equals(receiverLastName))
+                                                    {
+                                                        receiversName = (string)((JValue)participantToken.SelectToken("athlete.displayName")).Value;
+                                                        break;
+                                                    }
+                                                }
+
+                                                playDetails.Message = "🎉 Touchdown! " + playDetails.PlayerName + " threw a " + scoringPlayYardage + " yard TD to " + receiversName + "!";
                                             }
                                             else
                                             {
@@ -797,11 +821,18 @@
                                         // otherwise, the player received it
                                         if (bigPlayText.IndexOf(abbreviatedPlayerName) < bigPlayText.IndexOf("pass"))
                                         {
+                                            // find the name of the player this player threw a TD to, which will be in between the words "to" and the next space
+                                            // the receiver name; so in the form of:
+                                            // (6:31) (Shotgun) P.Mahomes pass deep right to M.Hardman pushed ob at LV 27 for 28 yards (J.Abram).
+                                            int indexOfWordBeforeReceiverName = bigPlayText.IndexOf("to");
+                                            int indexOfSpaceAfterReceiverName = bigPlayText.IndexOf(" ", indexOfWordBeforeReceiverName + ("to".Length + 2));
+                                            string receiversName = bigPlayText.Substring(indexOfWordBeforeReceiverName + ("to".Length + 1), indexOfSpaceAfterReceiverName - (indexOfWordBeforeReceiverName + ("to".Length + 1)));
+
                                             // player threw a pass, so we'll only alert if it's above the passing yardage threshold
                                             if (playYardage >= PASSING_BIG_PLAY_YARDAGE)
                                             {
                                                 bigPlayOccurred = true;
-                                                playDetails.Message = "🚀 Big play! " + playDetails.PlayerName + " threw a pass of " + playYardage + " yards.";
+                                                playDetails.Message = "🚀 Big play! " + playDetails.PlayerName + " threw a pass of " + playYardage + " yards to " + receiversName + "!";
                                             }
                                         }
                                         else
