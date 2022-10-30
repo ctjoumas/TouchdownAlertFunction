@@ -37,7 +37,7 @@
         }
 
         [FunctionName("ParseTouchdownsFromJson")]
-        public async void RunTouchdownTest([HttpTrigger(AuthorizationLevel.Function, "post", Route = null)] HttpRequest req, ILogger log)
+        public async Task RunTouchdownTest([HttpTrigger(AuthorizationLevel.Function, "post", Route = null)] HttpRequest req, ILogger log)
         {
             string requestBody = String.Empty;
 
@@ -62,7 +62,7 @@
         }
 
         [FunctionName("ParseBigPlayFromJson")]
-        public async void RunBigPlayTest([HttpTrigger(AuthorizationLevel.Function, "post", Route = null)] HttpRequest req, ILogger log, ExecutionContext context)
+        public async Task RunBigPlayTest([HttpTrigger(AuthorizationLevel.Function, "post", Route = null)] HttpRequest req, ILogger log, ExecutionContext context)
         {
             string requestBody = String.Empty;
 
