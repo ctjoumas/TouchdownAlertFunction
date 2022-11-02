@@ -3,6 +3,8 @@
     using Azure.Core;
     using Azure.Identity;
     using Azure.Messaging.ServiceBus;
+    using Azure.Storage;
+    using Azure.Storage.Blobs;
     using HtmlAgilityPack;
     using Microsoft.AspNetCore.Http;
     using Microsoft.Azure.WebJobs;
@@ -634,7 +636,6 @@
                                     {
                                         log.LogInformation("Did NOT add TD for " + playDetails.PlayerName + "; Player is a kicker.");
                                     }
-
                                     // We need to make sure that this player is the player who scored the TD and not the kicker kicking the XP. The
                                     // format of the text in the JSON Play By Play will be the following for a rushing and passing touchdown:
                                     // "text": "(5:30) (Shotgun) D.Samuel left end for 8 yards, TOUCHDOWN. R.Gould extra point is GOOD, Center-T.Pepper, Holder-M.Wishnowsky."
@@ -758,6 +759,12 @@
                                     }
                                 }
                             }
+                            else if (touchdownType.ToLower().Contains("touchdown"))
+                            {
+                                // TESTING - we will export this json so we can see how the paylod looks for a fumble recovery for a touchdown or
+                                // any other type of defensive score
+                                await UploadJsonPlayByPlayDoc(espnGameId.ToString(), touchdownType, playByPlayJsonObject, configurationBuilder);
+                            }
                             /*else if ("fumble touchdown???")
                             {
 
@@ -766,6 +773,11 @@
                             {
                                 // ignore field goals
                             }*/
+                        }
+                        else
+                        {
+                            // TESTING - we will export this json so we can see how the paylod looks for a safety, blocked punt / kick, etc
+                            await UploadJsonPlayByPlayDoc(espnGameId.ToString(), scoringType, playByPlayJsonObject, configurationBuilder);
                         }
                         //else if (scoringType.ToLower().Equals("safety"))
                         //{
@@ -872,6 +884,30 @@
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// When an unknown play occurs, the live json play by play doc will be uploaded to Azure storage so it can be investigated and the code
+        /// can be updated accordingly.
+        /// </summary>
+        /// <param name="espnGameId">The ESPN game id</param>
+        /// <param name="touchdownType">The type of touchdown, which will help clarify what we are looking at in this JSON object</param>
+        /// <param name="playByPlayJsonObject">The jSON object</param>
+        /// <param name="configurationBuilder">Configuration builder to pull out the storage account key from settings</param>
+        /// <returns></returns>
+        private async Task UploadJsonPlayByPlayDoc(string espnGameId, string touchdownType, JObject playByPlayJsonObject, IConfiguration configurationBuilder)
+        {
+            string accountName = "playbyplayjsondocs";
+            string accountKey = configurationBuilder["JsonDocStorageAccountKey"];
+            StorageSharedKeyCredential sharedKeyCredential = new StorageSharedKeyCredential(accountName, accountKey);
+            string blobUri = "https://" + accountName + ".blob.core.windows.net";
+            string blobName = espnGameId + touchdownType.ToLower();
+
+            BlobServiceClient blobServiceClient = new BlobServiceClient(new Uri(blobUri), sharedKeyCredential);
+            BlobContainerClient containerClient = blobServiceClient.GetBlobContainerClient("playbyplaydocs");
+
+            BlobClient blobClient = containerClient.GetBlobClient(blobName);
+            await blobClient.UploadAsync(BinaryData.FromString(playByPlayJsonObject.ToString()), overwrite: true);
         }
 
 
