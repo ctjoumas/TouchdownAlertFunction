@@ -313,7 +313,7 @@
         // {month} 9-12 is Sept-Dec
         // {day of week} 4 is Thursday
         [FunctionName("ParseTouchdownsThursday")]
-        public void RunThursday([TimerTrigger("*/10 * 12-23 * 9-12 4")] TimerInfo myTimer, ILogger log, ExecutionContext context)
+        public void RunThursday([TimerTrigger("*/10 * 20-23 * 9-12 4")] TimerInfo myTimer, ILogger log, ExecutionContext context)
         {
             log.LogInformation("C# HTTP trigger function processed a request for Thursday games at " + DateTime.Now);
 
