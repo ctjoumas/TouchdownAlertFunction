@@ -284,7 +284,7 @@
         // {month} 9-1 is Sept-Jan
         // {day of week} 0 is Sunday
         [FunctionName("ParseTouchdownsSunday")]
-        public void RunSunday([TimerTrigger("*/10 * 9-23 * 9-12 0")] TimerInfo myTimer, ILogger log, ExecutionContext context)
+        public void RunSunday([TimerTrigger("*/10 * 13-23 * 9-12 0")] TimerInfo myTimer, ILogger log, ExecutionContext context)
         {
             log.LogInformation("C# HTTP trigger function processed a request for Sunday games at " + DateTime.Now);
 
@@ -759,7 +759,8 @@
                                     }
                                 }
                             }
-                            else if (touchdownType.ToLower().Contains("touchdown"))
+                            // updating to catch any other scoring play - there was a defense fumble recovery for a TD which wasn't alerted
+                            else// if (touchdownType.ToLower().Contains("touchdown"))
                             {
                                 // TESTING - we will export this json so we can see how the paylod looks for a fumble recovery for a touchdown or
                                 // any other type of defensive score
