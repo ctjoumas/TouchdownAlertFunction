@@ -94,6 +94,32 @@
             parseTouchdownsAndBigPlays(gamesToParse, log, configurationBuilder);
         }
 
+        // The timer trigger should run every 10 seconds on Saturdays from 1-11:59pm, Dec-Jan
+        // * * * * * *
+        // {second} {minute} {hour} {day of month} {month} {day of week}
+        // for the trigger - */10 * 13 * 9-1 0 - each component is:
+        // {second} */10 is every 10 seconds
+        // {minute} 20 is at 20 minutes past the hour (thursday night games start at 8:20) - using *
+        // {hour} 20-23 is 8pm-11:59pm
+        // {day of the month} * is every day
+        // {month} 9-12 is Sept-Dec
+        // {day of week} 6 is Saturday
+        [FunctionName("ParseTouchdownsSaturday")]
+        public void RunSaturday([TimerTrigger("*/10 * 13-23 * 12 6")] TimerInfo myTimer, ILogger log, ExecutionContext context)
+        {
+            log.LogInformation("C# HTTP trigger function processed a request for Thursday games at " + DateTime.Now);
+
+            var configurationBuilder = new ConfigurationBuilder()
+                .SetBasePath(context.FunctionAppDirectory)
+                .AddJsonFile("local.settings.json", optional: true, reloadOnChange: true)
+                .AddEnvironmentVariables()
+                .Build();
+
+            Hashtable gamesToParse = getGamesToParse(log);
+
+            parseTouchdownsAndBigPlays(gamesToParse, log, configurationBuilder);
+        }
+
         // TESTING PRESEASON GAME
         // ======================
         // The timer trigger should run every 10 seconds on Thursdays from 8-11:59pm, Sept-Jan
@@ -371,14 +397,24 @@
                             {
                                 // It appears that the a player who rushed or received a TD will have their name appear as the first part of the text
                                 // and the QB will appear after the "from" text such as:
-                                // "Austin Ekeler 1 Yd Run (Cameron Dicker Kick)" or
-                                // "Tyreek Hill 60 Yd pass from Tua Tagovailoa (Jason Sanders Kick)" (this will work for both WR/RB and QB) or
-                                // "Tyreek Hill 57 Yd Fumble Recovery (Jason Sanders Kick)" for an offensive fumble recovery for a TD
+                                // Rush:
+                                //   "Christian McCaffrey 1 Yd Rush, R.Gould extra point is GOOD, Center-T.Pepper, Holder-M.Wishnowsky."
+                                //   "Austin Ekeler 1 Yd Run (Cameron Dicker Kick)" or
+                                //   
+                                // Pass (it looks likt he first one here is what is shown during live games; when games end, it changes to the 2nd, so we should only really
+                                // care about the first one)
+                                //   "George Kittle Pass From Brock Purdy for 28 Yds, R.Gould extra point is GOOD, Center-T.Pepper, Holder-M.Wishnowsky."
+                                //   "Tyreek Hill 60 Yd pass from Tua Tagovailoa (Jason Sanders Kick)" (this will work for both WR/RB and QB) or
+                                //   
+                                // Fumble Recovery:
+                                //   "Tyreek Hill 57 Yd Fumble Recovery (Jason Sanders Kick)" for an offensive fumble recovery for a TD
                                 // let's check for a player who rushed or received a TD or picked up an offensive fumble and ran it in for a TD
                                 if (touchdownText.StartsWith(playDetails.PlayerName))
                                 {
                                     // regardless of the play, we need to get the yardage
                                     int touchdownPlayYardage = GetTouchdownPlayYardage(touchdownText);
+
+                                    string passingPlayer = "";
 
                                     // if this is a pass, the word "pass" will be in the text and we need to pull out the name of the player
                                     // who threw the TD
@@ -386,11 +422,7 @@
                                     {
                                         touchdownProcessed = true;
 
-                                        // the name of the player who threw the TD is between the word "from" and the first left paren
-                                        int indexOfWordFrom = touchdownText.IndexOf("from");
-                                        int indexOfFirstLeftParenthesis = touchdownText.IndexOf("(");
-
-                                        string passingPlayer = touchdownText.Substring(indexOfWordFrom + ("from".Length + 1), (indexOfFirstLeftParenthesis - (indexOfWordFrom + "from".Length + 2)));
+                                        passingPlayer = GetPassingPlayerName(touchdownText);
 
                                         playDetails.Message = "🎉 Touchdown! " + playDetails.PlayerName + " caught a " + touchdownPlayYardage + " yard TD from " + passingPlayer + "!";
                                     }
@@ -413,30 +445,27 @@
                                         log.LogInformation("Unknown! Play text: " + touchdownText);
                                     }
                                 }
-                                // otherwise, if this player threw a TD pass, such as from Tua
+                                // otherwise, if this player name is in the text, then they threw a TD pass, such as this one from Brock Purdy
+                                // "George Kittle Pass From Brock Purdy for 28 Yds, R.Gould extra point is GOOD, Center-T.Pepper, Holder-M.Wishnowsky."
+                                // This next one is only in this format with the parens for the kicker after the game ends
                                 // "Tyreek Hill 60 Yd pass from Tua Tagovailoa (Jason Sanders Kick)"
                                 else if (touchdownText.Contains(playDetails.PlayerName))
                                 {
-                                    // make sure that the kicker name isn't picked up and if so, if their name is surrounded by parenthesis, we can ignore
-                                    int indexOfLeftParentheses = touchdownText.IndexOf("(");
+                                    touchdownProcessed = true;
 
-                                    // as long as the player name is to the left of the parentheses, we know they threw this pass
-                                    if (touchdownText.IndexOf(playDetails.PlayerName) < indexOfLeftParentheses)
-                                    {
-                                        touchdownProcessed = true;
+                                    string passingPlayer = GetPassingPlayerName(touchdownText);
 
-                                        // get the name of the player this player threw a TD to
-                                        string[] wordsInTouchdownText = touchdownText.Split(" ");
+                                    // get the name of the player this player threw a TD to
+                                    string[] wordsInTouchdownText = touchdownText.Split(" ");
 
-                                        // get the integer in this string, which will be the yardage of the play
-                                        int touchdownPlayYardage = GetTouchdownPlayYardage(touchdownText);
+                                    // get the integer in this string, which will be the yardage of the play
+                                    int touchdownPlayYardage = GetTouchdownPlayYardage(touchdownText);
 
-                                        // now that we have the yardage, we can grab the players name to the left of this, which is the name of the
-                                        // player this QB threw a touchdown to
-                                        string receivingPlayer = touchdownText.Substring(0, touchdownText.IndexOf(touchdownPlayYardage.ToString()) - 1);
+                                    // now that we have the yardage, we can grab the players name to the left of this, which is the name of the
+                                    // player this QB threw a touchdown to
+                                    string receivingPlayer = touchdownText.Substring(0, touchdownText.IndexOf(touchdownPlayYardage.ToString()) - 1);
 
-                                        playDetails.Message = "🎉 Touchdown! " + playDetails.PlayerName + " threw a " + touchdownPlayYardage + " yard TD to " + receivingPlayer + "!";
-                                    }
+                                    playDetails.Message = "🎉 Touchdown! " + playDetails.PlayerName + " threw a " + touchdownPlayYardage + " yard TD to " + receivingPlayer + "!";
                                 }
 
                                 // if a touchdown was processed, add the touchdown to the db and send the message to the service hub
@@ -493,6 +522,42 @@
             }
 
             return touchdownPlayYardage;
+        }
+
+        /// <summary>
+        /// When a player either receives or throws a touchdown, we need to get the name of the player who
+        /// threw the touchdown. There are two formats for this:
+        ///   "George Kittle Pass From Brock Purdy for 28 Yds, R.Gould extra point is GOOD, Center-T.Pepper, Holder-M.Wishnowsky."
+        ///   "Tyreek Hill 60 Yd pass from Tua Tagovailoa (Jason Sanders Kick)" (this will work for both WR/RB and QB) or
+        /// with the first one being what should be seen during a live game and the second one is what that first one is changed
+        /// to once the game is over. So technically, since this is run only during live games, we should only care about the
+        /// first format of the string.
+        /// </summary>
+        /// <param name="touchdownText">The text of the touchdown play.</param>
+        /// <returns></returns>
+        private string GetPassingPlayerName(string touchdownText)
+        {
+            string passingPlayer = "";
+
+            // We're first checking if there is not a left paren, which should only be there for a completed game
+            if (touchdownText.IndexOf("(") == -1)
+            {
+                // the name of the player who threw the TD is between the word "From" and the word "for"
+                int indexOfWordFrom = touchdownText.IndexOf("From");
+                int indexOfWordFor = touchdownText.IndexOf("for");
+
+                passingPlayer = touchdownText.Substring(indexOfWordFrom + ("From".Length + 1), (indexOfWordFor - (indexOfWordFrom + "From".Length + 2)));
+            }
+            else if (touchdownText.IndexOf("(") != -1)
+            {
+                // the name of the player who threw the TD is between the word "from" and the first left paren
+                int indexOfWordFrom = touchdownText.IndexOf("from");
+                int indexOfFirstLeftParenthesis = touchdownText.IndexOf("(");
+
+                passingPlayer = touchdownText.Substring(indexOfWordFrom + ("from".Length + 1), (indexOfFirstLeftParenthesis - (indexOfWordFrom + "from".Length + 2)));
+            }
+
+            return passingPlayer;
         }
 
         /// <summary>
