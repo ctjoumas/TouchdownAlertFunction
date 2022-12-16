@@ -382,7 +382,7 @@
 
                                     // if this is a pass, the word "pass" will be in the text and we need to pull out the name of the player
                                     // who threw the TD
-                                    if (touchdownText.Contains("pass"))
+                                    if (touchdownText.ToLower().Contains("pass"))
                                     {
                                         touchdownProcessed = true;
 
@@ -395,14 +395,14 @@
                                         playDetails.Message = "🎉 Touchdown! " + playDetails.PlayerName + " caught a " + touchdownPlayYardage + " yard TD from " + passingPlayer + "!";
                                     }
                                     // otherwise if it's a fumble recovery for a TD
-                                    else if (touchdownText.Contains("Fumble Recovery"))
+                                    else if (touchdownText.ToLower().Contains("fumble recovery"))
                                     {
                                         touchdownProcessed = true;
 
                                         playDetails.Message = "🎉 Touchdown! " + playDetails.PlayerName + " recovered a fumble for a " + touchdownPlayYardage + " yard TD!";
                                     }
                                     // otherwise, i'ts a rushing TD
-                                    else if (touchdownText.Contains("Run"))
+                                    else if (touchdownText.ToLower().Contains("run") || touchdownText.Contains("rush"))
                                     {
                                         touchdownProcessed = true;
 
