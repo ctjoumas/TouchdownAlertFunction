@@ -402,7 +402,7 @@
                                         playDetails.Message = "🎉 Touchdown! " + playDetails.PlayerName + " recovered a fumble for a " + touchdownPlayYardage + " yard TD!";
                                     }
                                     // otherwise, i'ts a rushing TD
-                                    else if (touchdownText.ToLower().Contains("run") || touchdownText.Contains("rush"))
+                                    else if (touchdownText.ToLower().Contains("run") || touchdownText.ToLower().Contains("rush"))
                                     {
                                         touchdownProcessed = true;
 
