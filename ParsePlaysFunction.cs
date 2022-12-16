@@ -410,7 +410,7 @@
                                     }
                                     else
                                     {
-                                        Console.WriteLine("Unknown! Play text: " + touchdownText);
+                                        log.LogInformation("Unknown! Play text: " + touchdownText);
                                     }
                                 }
                                 // otherwise, if this player threw a TD pass, such as from Tua
@@ -447,13 +447,13 @@
 
                                     if (touchdownAdded)
                                     {
-                                        Console.WriteLine(playDetails.Message);
+                                        log.LogInformation(playDetails.Message);
 
                                         await sendPlayMessage(playDetails, configurationBuilder);
                                     }
                                     else
                                     {
-                                        Console.WriteLine("Did NOT log TD for " + playDetails.PlayerName + "; TD already parsed earlier.");
+                                        log.LogInformation("Did NOT log TD for " + playDetails.PlayerName + "; TD already parsed earlier.");
                                     }
 
                                     // reset the touchdown processed flag
