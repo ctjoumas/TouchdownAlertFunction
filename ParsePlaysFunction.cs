@@ -411,6 +411,11 @@
                             // used to determine if a big play occured, whether it's passing, receiving, or rushing
                             bool bigPlayOccurred = false;
 
+                            // if a fumble occurs, we need to cut off the text from FUMBLES on so that the recovering player doesn't get credited with the big play.
+                            // We save this original play so during the processing of the big play, we can check to see if the other team recovered the fumble so we
+                            // can add that to the alert
+                            string originalPlayResult = playResult;
+
                             // if it's a fumble recovery cut off the string from the word FUMBLES on since forward progress on a fumble recovery is not credited to a player
                             if (playResult.ToLower().Contains("fumbles"))
                             {
@@ -480,14 +485,22 @@
                                                 // player received a pass, and we already know it's above the threshold since that was our
                                                 // first check, so just send the alert
                                                 playDetails.Message = "🚀 Big play! " + playDetails.PlayerName + " caught a pass of " + playYards + " yards.";
+
+                                                // if the player fumbled, let's see if the other team recovered it so we can add that to the message
+                                                if (originalPlayResult.ToLower().Contains("fumbles"))
+                                                {
+                                                    // get recovering team name so if it's the opponent, we can say while this was a big play, it was also a lost fumble
+                                                    int indexOfRecoveredBy = originalPlayResult.IndexOf("recovered by");
+                                                    int indexOfDash = originalPlayResult.IndexOf("-", indexOfRecoveredBy);
+                                                    string recoveringTeamAbbreviation = originalPlayResult.Substring(indexOfRecoveredBy + "recovered by".Length + 1, indexOfDash - (indexOfRecoveredBy + "recovered by".Length + 1));
+
+                                                    if (recoveringTeamAbbreviation.ToLower().Equals(playDetails.OpponentAbbreviation.ToLower()))
+                                                    {
+                                                        log.LogInformation("(FUMBLE - Lost ball on the play)");
+                                                        playDetails.Message += " (FUMBLE - Lost ball on the play)";
+                                                    }
+                                                }
                                             }
-                                        }
-                                        else if (playResult.ToLower().Contains("fumbles"))
-                                        {
-                                            // The play could be a rush but then a subsequent fumble in which case we'd need to see if the player lost the fumble
-                                            // and include that in the message as well, or if he fumbled it and his own team recovered it
-                                            //"(8:45 - 2nd) (Shotgun) J.Wilson up the middle to MIA 47 for 6 yards (A.Gilman). FUMBLES (A.Gilman), touched at MIA 44, recovered by MIA-T.Hill at MIA 43. T.Hill for 57 yards, TOUCHDOWN.J.Sanders extra point is GOOD, Center-B.Ferguson, Holder-T.Morstead."
-                                            // TODO: Implement this
                                         }
                                         else
                                         {
@@ -496,6 +509,21 @@
                                             log.LogInformation("*** " + "🚀 Big play! " + playDetails.PlayerName + " rushed for " + playYards + " yards.\n\n");
 
                                             playDetails.Message = "🚀 Big play! " + playDetails.PlayerName + " rushed for " + playYards + " yards.";
+
+                                            // if the player fumbled, let's see if the other team recovered it so we can add that to the message
+                                            if (originalPlayResult.ToLower().Contains("fumbles"))
+                                            {
+                                                // get recovering team name so if it's the opponent, we can say while this was a big play, it was also a lost fumble
+                                                int indexOfRecoveredBy = originalPlayResult.IndexOf("recovered by");
+                                                int indexOfDash = originalPlayResult.IndexOf("-", indexOfRecoveredBy);
+                                                string recoveringTeamAbbreviation = originalPlayResult.Substring(indexOfRecoveredBy + "recovered by".Length + 1, indexOfDash - (indexOfRecoveredBy + "recovered by".Length + 1));
+
+                                                if (recoveringTeamAbbreviation.ToLower().Equals(playDetails.OpponentAbbreviation.ToLower()))
+                                                {
+                                                    log.LogInformation("(FUMBLE - Lost ball on the play)");
+                                                    playDetails.Message += " (FUMBLE - Lost ball on the play)";
+                                                }
+                                            }
                                         }
 
                                         // if a big play occurred, let's add it to the database
