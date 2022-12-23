@@ -255,7 +255,7 @@
 
                                 // it's more expensive to use the ContainsKey method on a hashtable, so just pull out
                                 // the value and check if it's null
-                                ArrayList playerList = (ArrayList)gamesToParse[espnGameId];
+                                List<PlayDetails> playerList = (List<PlayDetails>)gamesToParse[espnGameId];
 
                                 // if it's not null, the game exists in the hashtable, so let's remove the item so we can add the
                                 // touchdown details for this player to the list and re-add the key/value pair with this new player's
@@ -267,7 +267,7 @@
                                 }
                                 else
                                 {
-                                    playerList = new ArrayList();
+                                    playerList = new List<PlayDetails>();
                                 }
 
                                 playerList.Add(playDetails);
