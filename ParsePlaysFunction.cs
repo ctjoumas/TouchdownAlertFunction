@@ -406,7 +406,7 @@
                         //     "(2:15 - 1st) M.Jones pass short middle intended for T.Thornton INTERCEPTED by I.Simmons (C.Thomas) at NE 41. I.Simmons to NE 36 for 5 yards (Ma.Jones)."
                         if (playResult.ToLower().Contains("yards") && !playResult.ToLower().Contains("punts") &&
                             !playResult.ToLower().Contains("penalty") && !playResult.ToLower().Contains("intercepted") &&
-                            !playResult.ToLower().Contains("kicks"))
+                            !playResult.ToLower().Contains("kicks") && !playResult.ToLower().Contains("touchdown"))
                         {
                             // used to determine if a big play occured, whether it's passing, receiving, or rushing
                             bool bigPlayOccurred = false;
@@ -710,7 +710,7 @@
                                         // This next one is only in this format with the parens for the kicker after the game ends
                                         // "Tyreek Hill 60 Yd pass from Tua Tagovailoa (Jason Sanders Kick)"
                                         else if (touchdownText.Contains(playDetails.PlayerName) &&
-                                                 touchdownText.IndexOf(playDetails.PlayerName) < touchdownText.IndexOf("("))
+                                                ((touchdownText.IndexOf(playDetails.PlayerName) < touchdownText.IndexOf("(")) || (touchdownText.IndexOf(playDetails.PlayerName) < touchdownText.IndexOf(","))))
                                         {
                                             touchdownProcessed = true;
 
@@ -724,7 +724,7 @@
 
                                             // now that we have the yardage, we can grab the players name to the left of this, which is the name of the
                                             // player this QB threw a touchdown to
-                                            string receivingPlayer = touchdownText.Substring(0, touchdownText.IndexOf(touchdownPlayYardage.ToString()) - 1);
+                                            string receivingPlayer = touchdownText.Substring(0, touchdownText.IndexOf("Pass From") - 1);
 
                                             playDetails.Message = "🎉 Touchdown! " + playDetails.PlayerName + " threw a " + touchdownPlayYardage + " yard TD to " + receivingPlayer + "!";
                                         }
