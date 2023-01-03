@@ -52,7 +52,7 @@
         // {month} 9-1 is Sept-Jan
         // {day of week} 0 is Sunday
         [FunctionName("ParseTouchdownsSunday")]
-        public void RunSunday([TimerTrigger("*/10 * 13-23 * 9-12 0")] TimerInfo myTimer, ILogger log, ExecutionContext context)
+        public void RunSunday([TimerTrigger("*/10 * 13-23 * 9-1 0")] TimerInfo myTimer, ILogger log, ExecutionContext context)
         {
             log.LogInformation("C# HTTP trigger function processed a request for Sunday games at " + DateTime.Now);
 
@@ -69,6 +69,28 @@
 
             parseTouchdownsAndBigPlays(gamesToParse, log, configurationBuilder);
         }
+
+        [FunctionName("TestParseTuesday")]
+        public void RunTestParse([TimerTrigger("*/10 * 10-23 * 9-1 2")] TimerInfo myTimer, ILogger log, ExecutionContext context)
+        {
+            log.LogInformation("C# HTTP trigger function processed a request for Sunday games at " + DateTime.Now);
+
+            var configurationBuilder = new ConfigurationBuilder()
+                .SetBasePath(context.FunctionAppDirectory)
+                .AddJsonFile("local.settings.json", optional: true, reloadOnChange: true)
+                .AddEnvironmentVariables()
+                .Build();
+
+            //string serviceBusSharedAccessSignature = configurationBuilder["ServiceBusSharedAccessKey"];
+            //log.LogInformation("Found SB SAS - original function: " + serviceBusSharedAccessSignature);
+
+            Hashtable gamesToParse = getGamesToParse(log);
+
+            parseTouchdownsAndBigPlays(gamesToParse, log, configurationBuilder);
+        }
+
+
+
 
         // The timer trigger should run every 10 seconds on Thursdays from 8-11:59pm, Sept-Jan
         // * * * * * *
@@ -107,7 +129,7 @@
         // {month} 9-12 is Sept-Dec
         // {day of week} 6 is Saturday
         [FunctionName("ParseTouchdownsSaturday")]
-        public void RunSaturday([TimerTrigger("*/10 * 13-23 * 12 6")] TimerInfo myTimer, ILogger log, ExecutionContext context)
+        public void RunSaturday([TimerTrigger("*/10 * 16-23 * 1 6")] TimerInfo myTimer, ILogger log, ExecutionContext context)
         {
             log.LogInformation("C# HTTP trigger function processed a request for Thursday games at " + DateTime.Now);
 
