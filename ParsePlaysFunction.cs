@@ -6,9 +6,7 @@
     using Azure.Storage;
     using Azure.Storage.Blobs;
     using HtmlAgilityPack;
-    using Microsoft.AspNetCore.Http;
     using Microsoft.Azure.WebJobs;
-    using Microsoft.Azure.WebJobs.Extensions.Http;
     using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.Logging;
     using Newtonsoft.Json;
@@ -17,7 +15,6 @@
     using System.Collections;
     using System.Collections.Generic;
     using System.Data.SqlClient;
-    using System.IO;
     using System.Linq;
     using System.Threading.Tasks;
 
@@ -193,7 +190,7 @@
 
             var connectionStringBuilder = new SqlConnectionStringBuilder
             {
-                DataSource = "tcp:playersandscheduledetails.database.windows.net,1433",
+                DataSource = "tcp:playersandschedulesdetails.database.windows.net,1433",
                 InitialCatalog = "PlayersAndSchedulesDetails",
                 TrustServerCertificate = false,
                 Encrypt = true
@@ -1063,7 +1060,7 @@
 
             var connectionStringBuilder = new SqlConnectionStringBuilder
             {
-                DataSource = "tcp:playersandscheduledetails.database.windows.net,1433",
+                DataSource = "tcp:playersandschedulesdetails.database.windows.net,1433",
                 InitialCatalog = "PlayersAndSchedulesDetails",
                 TrustServerCertificate = false,
                 Encrypt = true
@@ -1129,7 +1126,7 @@
 
             var connectionStringBuilder = new SqlConnectionStringBuilder
             {
-                DataSource = "tcp:playersandscheduledetails.database.windows.net,1433",
+                DataSource = "tcp:playersandschedulesdetails.database.windows.net,1433",
                 InitialCatalog = "PlayersAndSchedulesDetails",
                 TrustServerCertificate = false,
                 Encrypt = true
