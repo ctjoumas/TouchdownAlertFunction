@@ -39,4 +39,4 @@ jobs:
           app-name: 'TouchdownAndBigPlayAlertFunction'
           slot-name: 'Production'
           package: '${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/output'
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_F269305836944BF48D7254425E45B1C3 }}
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_E9DFD67FE0164C34B47B148722363872 }}
