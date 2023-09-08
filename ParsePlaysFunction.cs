@@ -333,7 +333,7 @@
         {
             JObject playByPlayJsonObject = null;
 
-            var playByPlayJavaScriptNodes = playByPlayDoc.DocumentNode.SelectNodes("//script[@type='text/javascript']");
+            var playByPlayJavaScriptNodes = playByPlayDoc.DocumentNode.SelectNodes("//script");
 
             foreach (var scriptNode in playByPlayJavaScriptNodes)
             {
@@ -341,8 +341,10 @@
                 // window['__espnfitt__'] = { "app": {.... <all json> }
                 if (scriptNode.InnerText.Contains("window['__espnfitt__']"))
                 {
+                    // as of August 2023, the first part of the JSON will have a node before the window['__espnfitt__']=,
+                    // so we need to start the search for the JSON where this element starts
                     string content = scriptNode.InnerText.Trim();
-                    int equalIndex = content.IndexOf("=");
+                    int equalIndex = content.IndexOf("=", content.IndexOf("window['__espnfitt__']"));
 
                     // there is a trailing ;, so pull that off
                     string jsonContent = content.Substring(equalIndex + 1, content.Length - (equalIndex + 2));
@@ -724,7 +726,14 @@
 
                                             // now that we have the yardage, we can grab the players name to the left of this, which is the name of the
                                             // player this QB threw a touchdown to
-                                            string receivingPlayer = touchdownText.Substring(0, touchdownText.IndexOf("Pass From") - 1);
+                                            string receivingPlayer = touchdownText.Substring(0, touchdownText.ToLower().IndexOf("pass from") - 1);
+
+                                            // if the format is like "tyreek Hill 60 Yd pass from...", the above will have "Tyreek Hill 60 Yd" for the name, so we
+                                            // need to check for this and strip it off
+                                            if (receivingPlayer.ToLower().Contains("yd"))
+                                            {
+                                                receivingPlayer = receivingPlayer.Substring(0, receivingPlayer.IndexOf(touchdownPlayYardage.ToString()) - 1);
+                                            }
 
                                             playDetails.Message = "🎉 Touchdown! " + playDetails.PlayerName + " threw a " + touchdownPlayYardage + " yard TD to " + receivingPlayer + "!";
                                         }
@@ -999,8 +1008,6 @@
             // connection string to your Service Bus namespace
             string serviceBusSharedAccessSignature = configurationBuilder["ServiceBusSharedAccessKey"];
             string connectionString = "Endpoint=sb://fantasyfootballstattracker.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=" + serviceBusSharedAccessSignature;
-
-            //string connectionString = "Endpoint=sb://fantasyfootballstattracker.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=dZmufQp1JtwggtAqRFqxzUbOf5mloeA4LJUapntE+wY=";
 
             // name of your Service Bus queue
             string queueName = "touchdownqueue";
