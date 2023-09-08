@@ -3,6 +3,6 @@
   "Values": {
     "AzureWebJobsStorage": "UseDevelopmentStorage=true",
     "FUNCTIONS_WORKER_RUNTIME": "dotnet",
-    "ServiceBusSharedAccessKey": "QKi9Ab/+tZTj8Y+PHGxkOH2fUTzjbc/+cHM8f9R83OQ="
+    "ServiceBusSharedAccessKey": ""
   }
 }
