@@ -52,7 +52,7 @@
         // {month} 9-1 is Sept-Jan
         // {day of week} 0 is Sunday
         [FunctionName("ParseTouchdownsSunday")]
-        public void RunSunday([TimerTrigger("*/10 * 13-23 * 9-1 0")] TimerInfo myTimer, ILogger log, ExecutionContext context)
+        public void RunSunday([TimerTrigger("*/10 * 9-23 * 9-1 0")] TimerInfo myTimer, ILogger log, ExecutionContext context)
         {
             log.LogInformation("C# HTTP trigger function processed a request for Sunday games at " + DateTime.Now);
 
