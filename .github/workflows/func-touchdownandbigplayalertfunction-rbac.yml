@@ -36,13 +36,16 @@ jobs:
         dotnet-version: ${{ env.DOTNET_VERSION }}
         
     - name: Restore
-      run: dotnet restore "${{ env.WORKING_DIRECTORY }}\PlayAlertFunction.csproj"
+      #run: dotnet restore "${{ env.WORKING_DIRECTORY }}\PlayAlertFunction.csproj"
+      run: dotnet restore "${{ env.WORKING_DIRECTORY }}\TouchdownAlertFunction.sln"
       
     - name: Build
-      run: dotnet build "${{ env.WORKING_DIRECTORY }}\PlayAlertFunction.csproj" --configuration ${{ env.CONFIGURATION }} --no-restore
+      #run: dotnet build "${{ env.WORKING_DIRECTORY }}\PlayAlertFunction.csproj" --configuration ${{ env.CONFIGURATION }} --no-restore
+      run: dotnet build "${{ env.WORKING_DIRECTORY }}\TouchdownAlertFunction.sln" --configuration ${{ env.CONFIGURATION }} --no-restore
       
     - name: Publish
-      run: dotnet publish "${{ env.WORKING_DIRECTORY }}\PlayAlertFunction.csproj" --configuration ${{ env.CONFIGURATION }} --no-build --output "${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}"
+      #run: dotnet publish "${{ env.WORKING_DIRECTORY }}\PlayAlertFunction.csproj" --configuration ${{ env.CONFIGURATION }} --no-build --output "${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}"
+      run: dotnet publish "${{ env.WORKING_DIRECTORY }}\TouchdownAlertFunction.sln" --configuration ${{ env.CONFIGURATION }} --no-build --output "${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}"
       
     - name: Publish Artifacts
       uses: actions/upload-artifact@v3
@@ -56,4 +59,3 @@ jobs:
       with:
         app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
         package: '${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}'
-        publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_C5D1AEE622AD4153A99D47DF35595033 }}
