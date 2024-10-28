@@ -44,7 +44,7 @@ jobs:
       
     - name: Publish
       #run: dotnet publish "${{ env.WORKING_DIRECTORY }}\PlayAlertFunction.csproj" --configuration ${{ env.CONFIGURATION }} --no-build --output "${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}"
-      run: dotnet publish "${{ env.WORKING_DIRECTORY }}\PlayAlertFunction.csproj" --configuration ${{ env.CONFIGURATION }} --output "${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}"
+      run: dotnet publish "${{ env.WORKING_DIRECTORY }}\PlayAlertFunction.csproj" --configuration ${{ env.CONFIGURATION }} --output "${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}" -v diag
       
     - name: Publish Artifacts
       uses: actions/upload-artifact@v3
