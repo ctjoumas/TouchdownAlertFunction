@@ -6,7 +6,8 @@
     using Azure.Storage;
     using Azure.Storage.Blobs;
     using HtmlAgilityPack;
-    using Microsoft.Azure.WebJobs;
+    using Microsoft.AspNetCore.Http;
+    using Microsoft.Azure.Functions.Worker;
     using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.Logging;
     using Newtonsoft.Json;
@@ -48,24 +49,25 @@
         // {day of the month} * is every day
         // {month} 9-1 is Sept-Jan
         // {day of week} 0 is Sunday
-        [FunctionName("ParseTouchdownsSunday")]
+        [Function("ParseTouchdownsSunday")]
         //public void RunSunday([TimerTrigger("*/10 * 9-23 * 1-2 0")] TimerInfo myTimer, ILogger log, ExecutionContext context)
-        public void RunSunday([TimerTrigger("*/10 * 9-23 * 9-12 0")] TimerInfo myTimer, ILogger log, ExecutionContext context)
+        public void RunSunday([TimerTrigger("*/10 * 9-23 * 9-12 0")] TimerInfo myTimer, FunctionContext context)
         {
+            var log = context.GetLogger("ParseTouchdownsSunday");
             log.LogInformation("C# HTTP trigger function processed a request for Sunday games at " + DateTime.Now);
 
-            var configurationBuilder = new ConfigurationBuilder()
+            /*var configurationBuilder = new ConfigurationBuilder()
                 .SetBasePath(context.FunctionAppDirectory)
                 .AddJsonFile("local.settings.json", optional: true, reloadOnChange: true)
                 .AddEnvironmentVariables()
-                .Build();
+                .Build();*/
 
             //string serviceBusSharedAccessSignature = configurationBuilder["ServiceBusSharedAccessKey"];
             //log.LogInformation("Found SB SAS - original function: " + serviceBusSharedAccessSignature);
 
             Hashtable gamesToParse = getGamesToParse(log);
 
-            parseTouchdownsAndBigPlays(gamesToParse, log, configurationBuilder);
+            parseTouchdownsAndBigPlays(gamesToParse, log);//, configurationBuilder);
         }
 
         // The timer trigger should run every 10 seconds on Thursdays from 8-11:59pm, Sept-Jan
@@ -78,20 +80,21 @@
         // {day of the month} * is every day
         // {month} 9-12 is Sept-Dec
         // {day of week} 4 is Thursday
-        [FunctionName("ParseTouchdownsThursday")]
-        public void RunThursday([TimerTrigger("*/10 * 20-23 * 9-12 4")] TimerInfo myTimer, ILogger log, ExecutionContext context)
+        [Function("ParseTouchdownsThursday")]
+        public void RunThursday([TimerTrigger("*/10 * 20-23 * 9-12 4")] TimerInfo myTimer, FunctionContext context)
         {
+            var log = context.GetLogger("ParseTouchdownsThursday");
             log.LogInformation("C# HTTP trigger function processed a request for Thursday games at " + DateTime.Now);
 
-            var configurationBuilder = new ConfigurationBuilder()
+            /*var configurationBuilder = new ConfigurationBuilder()
                 .SetBasePath(context.FunctionAppDirectory)
                 .AddJsonFile("local.settings.json", optional: true, reloadOnChange: true)
                 .AddEnvironmentVariables()
-                .Build();
+                .Build();*/
 
             Hashtable gamesToParse = getGamesToParse(log);
 
-            parseTouchdownsAndBigPlays(gamesToParse, log, configurationBuilder);
+            parseTouchdownsAndBigPlays(gamesToParse, log);//, configurationBuilder);
         }
 
         // The timer trigger should run every 10 seconds on Saturdays from 1-11:59pm, Dec-Jan
@@ -104,20 +107,21 @@
         // {day of the month} * is every day
         // {month} 12-1 is Dec-Jan
         // {day of week} 6 is Saturday
-        [FunctionName("ParseTouchdownsSaturday")]
-        public void RunSaturday([TimerTrigger("*/10 * 16-23 * 1-2 6")] TimerInfo myTimer, ILogger log, ExecutionContext context)
+        [Function("ParseTouchdownsSaturday")]
+        public void RunSaturday([TimerTrigger("*/10 * 16-23 * 1-2 6")] TimerInfo myTimer, FunctionContext context)
         {
+            var log = context.GetLogger("ParseTouchdownsSaturday");
             log.LogInformation("C# HTTP trigger function processed a request for Thursday games at " + DateTime.Now);
 
-            var configurationBuilder = new ConfigurationBuilder()
+            /*var configurationBuilder = new ConfigurationBuilder()
                 .SetBasePath(context.FunctionAppDirectory)
                 .AddJsonFile("local.settings.json", optional: true, reloadOnChange: true)
                 .AddEnvironmentVariables()
-                .Build();
+                .Build();*/
 
             Hashtable gamesToParse = getGamesToParse(log);
 
-            parseTouchdownsAndBigPlays(gamesToParse, log, configurationBuilder);
+            parseTouchdownsAndBigPlays(gamesToParse, log);//, configurationBuilder);
         }
 
         // TESTING PRESEASON GAME
@@ -132,20 +136,35 @@
         // {day of the month} * is every day
         // {month} 8 is Aug
         // {day of week} 7 is Sunday
-        [FunctionName("ParseTouchdownsSaturdayPreseason")]
-        public void RunSaturdayPreseason([TimerTrigger("*/10 * 15-23 * 8 6")] TimerInfo myTimer, ILogger log, ExecutionContext context)
+        [Function("ParseTouchdownsSaturdayPreseason")]
+        public void RunSaturdayPreseason([TimerTrigger("*/10 * 15-23 * 8 6")] TimerInfo myTimer, FunctionContext context)
         {
+            var log = context.GetLogger("ParseTouchdownsSaturdayPreseason");
             log.LogInformation("C# HTTP trigger function processed a request for Saturday Week 3 preseason games at " + DateTime.Now);
 
-            var configurationBuilder = new ConfigurationBuilder()
+            /*var configurationBuilder = new ConfigurationBuilder()
                             .SetBasePath(context.FunctionAppDirectory)
                             .AddJsonFile("local.settings.json", optional: true, reloadOnChange: true)
                             .AddEnvironmentVariables()
-                            .Build();
+                            .Build();*/
 
             Hashtable gamesToParse = getGamesToParse(log);
 
-            parseTouchdownsAndBigPlays(gamesToParse, log, configurationBuilder);
+            parseTouchdownsAndBigPlays(gamesToParse, log);// configurationBuilder);
+        }
+
+        [Function("Test")]
+        public void Test([HttpTrigger(AuthorizationLevel.Function, "get", "post")] HttpRequest req, FunctionContext context)
+        {
+            var log = context.GetLogger("Test");
+            try
+            {
+                Hashtable gamesToParse = getGamesToParse(log);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.ToString());
+            }
         }
 
 
@@ -159,28 +178,27 @@
         // {day of the month} * is every day
         // {month} 9-1 is Sept-Jan
         // {day of week} 1 is Monday
-        [FunctionName("ParseTouchdownsMonday")]
+        [Function("ParseTouchdownsMonday")]
         //public void RunMonday([TimerTrigger("*/10 * 20-23 * 1-2 1")] TimerInfo myTimer, ILogger log, ExecutionContext context)
-        public void RunMonday([TimerTrigger("*/10 * 20-23 * 9-12 1")] TimerInfo myTimer, ILogger log, ExecutionContext context)
+        public void RunMonday([TimerTrigger("*/10 * 20-23 * 9-12 1")] TimerInfo myTimer, FunctionContext context)
         {
+            var log = context.GetLogger("ParseTouchdownsMonday");
             log.LogInformation("C# HTTP trigger function processed a request for Monday games at " + DateTime.Now);
             try
             {
-                log.LogInformation("Building config builder");
-                var configurationBuilder = new ConfigurationBuilder()
+                /*var configurationBuilder = new ConfigurationBuilder()
                     .SetBasePath(context.FunctionAppDirectory)
                     .AddJsonFile("local.settings.json", optional: true, reloadOnChange: true)
                     .AddEnvironmentVariables()
-                    .Build();
-                log.LogInformation("Building config builder");
+                    .Build();*/
 
                 log.LogInformation("Getting SB SAS");
-                string serviceBusSharedAccessSignature = configurationBuilder["ServiceBusSharedAccessKey"];
+                string serviceBusSharedAccessSignature = Environment.GetEnvironmentVariable("ServiceBusSharedAccessKey", EnvironmentVariableTarget.Process);
                 log.LogInformation("Found SB SAS - original function: " + serviceBusSharedAccessSignature);
 
                 Hashtable gamesToParse = getGamesToParse(log);
 
-                parseTouchdownsAndBigPlays(gamesToParse, log, configurationBuilder);
+                parseTouchdownsAndBigPlays(gamesToParse, log);//, configurationBuilder);
             }
             catch (Exception e)
             {
@@ -309,7 +327,7 @@
         /// </summary>
         /// <param name="gamesToParse">Key is the Espn Game ID and the value is the list of players playing in the game</param>
         /// <param name="log">Logger</param>
-        public void parseTouchdownsAndBigPlays(Hashtable gamesToParse, ILogger log, IConfiguration configurationBuilder)
+        public async Task parseTouchdownsAndBigPlays(Hashtable gamesToParse, ILogger log)//, IConfiguration configurationBuilder)
         {
             JObject playByPlayJsonObject;
 
@@ -336,8 +354,8 @@
 
                     List<PlayDetails> playersInGame = (List<PlayDetails>)gamesToParse[key];
 
-                    ParsePlayerBigPlaysForGame(int.Parse((string)key), playByPlayJsonObject, playersInGame, log, configurationBuilder);
-                    ParsePlayerTouchdownsForGame(int.Parse((string)key), playByPlayJsonObject, playersInGame, log, configurationBuilder);
+                    await ParsePlayerBigPlaysForGame(int.Parse((string)key), playByPlayJsonObject, playersInGame, log);//, configurationBuilder);
+                    await ParsePlayerTouchdownsForGame(int.Parse((string)key), playByPlayJsonObject, playersInGame, log);//, configurationBuilder);
                 }
             }
         }
@@ -377,7 +395,7 @@
             return playByPlayJsonObject;
         }
 
-        private async void ParsePlayerBigPlaysForGame(int espnGameId, JObject playByPlayJsonObject, List<PlayDetails> playersInGame, ILogger log, IConfiguration configurationBuilder)
+        private async Task ParsePlayerBigPlaysForGame(int espnGameId, JObject playByPlayJsonObject, List<PlayDetails> playersInGame, ILogger log)//, IConfiguration configurationBuilder)
         {
             JToken driveTokens = playByPlayJsonObject.SelectToken("page.content.gamepackage.allPlys");
 
@@ -556,7 +574,7 @@
                                             if (bigPlayAdded)
                                             {
                                                 log.LogInformation("Added big play for " + playDetails.PlayerName);
-                                                await sendPlayMessage(playDetails, configurationBuilder);
+                                                await sendPlayMessage(playDetails);//, configurationBuilder);
                                             }
                                             else
                                             {
@@ -580,7 +598,7 @@
         /// <param name="espnGameId"></param>
         /// <param name="playByPlayJsonObject"></param>
         /// <param name="playersInGame"></param>
-        private async void ParsePlayerTouchdownsForGame(int espnGameId, JObject playByPlayJsonObject, List<PlayDetails> playersInGame, ILogger log, IConfiguration configurationBuilder)
+        private async Task ParsePlayerTouchdownsForGame(int espnGameId, JObject playByPlayJsonObject, List<PlayDetails> playersInGame, ILogger log)//, IConfiguration configurationBuilder)
         {
             // flag determining whether or not a touchdown was processed for a player so we know if we should add this
             // to the database and send the message to the service hub so the logic app will process it and send a text
@@ -637,7 +655,7 @@
                                             playDetails.Message = "🎉 Defensive Touchdown! " + playDetails.PlayerName + " blocked a kick and returned it for a TD!";
 
                                             log.LogInformation(playDetails.Message);
-                                            await sendPlayMessage(playDetails, configurationBuilder);
+                                            await sendPlayMessage(playDetails);//, configurationBuilder);
                                         }
                                         else
                                         {
@@ -662,7 +680,7 @@
 
                                             log.LogInformation(playDetails.Message);
 
-                                            await sendPlayMessage(playDetails, configurationBuilder);
+                                            await sendPlayMessage(playDetails);//, configurationBuilder);
                                         }
                                         else
                                         {
@@ -767,7 +785,7 @@
                                             {
                                                 log.LogInformation(playDetails.Message);
 
-                                                await sendPlayMessage(playDetails, configurationBuilder);
+                                                await sendPlayMessage(playDetails);//, configurationBuilder);
                                             }
                                             else
                                             {
@@ -1022,10 +1040,10 @@
         /// </summary>
         /// <param name="playDetails">The details of the particular play</param>
         /// <returns></returns>
-        private async Task sendPlayMessage(PlayDetails playDetails, IConfiguration configurationBuilder)
+        private async Task sendPlayMessage(PlayDetails playDetails)//, IConfiguration configurationBuilder)
         {
             // connection string to your Service Bus namespace
-            string serviceBusSharedAccessSignature = configurationBuilder["ServiceBusSharedAccessKey"];
+            string serviceBusSharedAccessSignature = Environment.GetEnvironmentVariable("ServiceBusSharedAccessKey", EnvironmentVariableTarget.Process);//configurationBuilder["ServiceBusSharedAccessKey"];
             string connectionString = "Endpoint=sb://fantasyfootballstattracker.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=" + serviceBusSharedAccessSignature;
 
             // name of your Service Bus queue
