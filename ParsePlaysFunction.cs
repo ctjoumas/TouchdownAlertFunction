@@ -164,19 +164,28 @@
         public void RunMonday([TimerTrigger("*/10 * 20-23 * 9-12 1")] TimerInfo myTimer, ILogger log, ExecutionContext context)
         {
             log.LogInformation("C# HTTP trigger function processed a request for Monday games at " + DateTime.Now);
+            try
+            {
+                log.LogInformation("Building config builder");
+                var configurationBuilder = new ConfigurationBuilder()
+                    .SetBasePath(context.FunctionAppDirectory)
+                    .AddJsonFile("local.settings.json", optional: true, reloadOnChange: true)
+                    .AddEnvironmentVariables()
+                    .Build();
+                log.LogInformation("Building config builder");
 
-            var configurationBuilder = new ConfigurationBuilder()
-                .SetBasePath(context.FunctionAppDirectory)
-                .AddJsonFile("local.settings.json", optional: true, reloadOnChange: true)
-                .AddEnvironmentVariables()
-                .Build();
+                log.LogInformation("Getting SB SAS");
+                string serviceBusSharedAccessSignature = configurationBuilder["ServiceBusSharedAccessKey"];
+                log.LogInformation("Found SB SAS - original function: " + serviceBusSharedAccessSignature);
 
-            string serviceBusSharedAccessSignature = configurationBuilder["ServiceBusSharedAccessKey"];
-            log.LogInformation("Found SB SAS - original function: " + serviceBusSharedAccessSignature);
+                Hashtable gamesToParse = getGamesToParse(log);
 
-            Hashtable gamesToParse = getGamesToParse(log);
-
-            parseTouchdownsAndBigPlays(gamesToParse, log, configurationBuilder);
+                parseTouchdownsAndBigPlays(gamesToParse, log, configurationBuilder);
+            }
+            catch (Exception e)
+            {
+                log.LogInformation(e.ToString());
+            }
         }
 
         /// <summary>
