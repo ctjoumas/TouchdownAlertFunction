@@ -197,8 +197,10 @@
         /// <returns>Hashtable of games for each player from the current weeks roster</returns>
         private Hashtable getGamesToParse(ILogger log)
         {
+            log.LogInformation("In Function getGamesToParse");
             Hashtable gamesToParse = new Hashtable();
 
+            log.LogInformation("Creating connection string builder");
             var connectionStringBuilder = new SqlConnectionStringBuilder
             {
                 DataSource = "tcp:playersandschedulesdetails.database.windows.net,1433",
@@ -206,13 +208,17 @@
                 TrustServerCertificate = false,
                 Encrypt = true
             };
+            log.LogInformation("Completed connection string builder");
 
+            log.LogInformation("Creating SQL Connection");
             SqlConnection sqlConnection = new SqlConnection(connectionStringBuilder.ConnectionString);
-
+            log.LogInformation("Finished creating connection string builder");
             try
             {
+                log.LogInformation("Getting Azure SQL Access Token");
                 string azureSqlToken = GetAzureSqlAccessToken();
                 sqlConnection.AccessToken = azureSqlToken;
+                log.LogInformation("Finished getting Azure SQL Access Token");
             }
             catch (Exception e)
             {
@@ -221,18 +227,23 @@
 
             using (sqlConnection)
             {
+                log.LogInformation("Opening SQL connection");
                 sqlConnection.Open();
+                log.LogInformation("Connection opened");
 
+                log.LogInformation("Calling stored procedure");
                 // call stored procedure to get all players for each team's roster for this week
                 using (SqlCommand command = new SqlCommand("GetTeamsForCurrentWeek", sqlConnection))
                 {
                     command.CommandType = System.Data.CommandType.StoredProcedure;
-
+                    log.LogInformation("Executing reader");
                     using (SqlDataReader reader = command.ExecuteReader())
                     {
+                        log.LogInformation("Reading SQL results");
                         while (reader.Read())
                         {
                             int season = (int)reader.GetValue(reader.GetOrdinal("Season"));
+                            log.LogInformation("Season: " + season);
                             int ownerId = (int)reader.GetValue(reader.GetOrdinal("OwnerID"));
                             string ownerName = reader.GetValue(reader.GetOrdinal("OwnerName")).ToString();
                             string ownerPhoneNumber = reader.GetValue(reader.GetOrdinal("PhoneNumber")).ToString();
