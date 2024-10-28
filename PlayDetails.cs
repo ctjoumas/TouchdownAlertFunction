@@ -12,13 +12,13 @@
     {
         public int Season { get; set; }
         public int OwnerId { get; set; }
-        public string OwnerName { get; set; }
-        public string PlayerName { get; set; }
-        public string PlayerPosition { get; set; }
-        public string PhoneNumber { get; set; }
-        public string TeamAbbreviation { get; set; }
-        public string OpponentAbbreviation { get; set; }
+        public string? OwnerName { get; set; }
+        public string? PlayerName { get; set; }
+        public string? PlayerPosition { get; set; }
+        public string? PhoneNumber { get; set; }
+        public string? TeamAbbreviation { get; set; }
+        public string? OpponentAbbreviation { get; set; }
         public DateTime GameDate { get; set; }
-        public string Message { get; set; }
+        public string? Message { get; set; }
     }
 }
