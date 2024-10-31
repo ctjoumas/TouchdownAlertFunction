@@ -161,10 +161,8 @@
         /// <returns>Hashtable of games for each player from the current weeks roster</returns>
         private Hashtable getGamesToParse(ILogger log)
         {
-            log.LogInformation("In Function getGamesToParse");
             Hashtable gamesToParse = new Hashtable();
 
-            log.LogInformation("Creating connection string builder");
             var connectionStringBuilder = new SqlConnectionStringBuilder
             {
                 DataSource = "tcp:playersandschedulesdetails.database.windows.net,1433",
@@ -172,17 +170,13 @@
                 TrustServerCertificate = false,
                 Encrypt = true
             };
-            log.LogInformation("Completed connection string builder");
 
-            log.LogInformation("Creating SQL Connection");
             SqlConnection sqlConnection = new SqlConnection(connectionStringBuilder.ConnectionString);
-            log.LogInformation("Finished creating connection string builder");
+
             try
             {
-                log.LogInformation("Getting Azure SQL Access Token");
                 string azureSqlToken = GetAzureSqlAccessToken();
                 sqlConnection.AccessToken = azureSqlToken;
-                log.LogInformation("Finished getting Azure SQL Access Token");
             }
             catch (Exception e)
             {
@@ -191,19 +185,14 @@
 
             using (sqlConnection)
             {
-                log.LogInformation("Opening SQL connection");
                 sqlConnection.Open();
-                log.LogInformation("Connection opened");
 
-                log.LogInformation("Calling stored procedure");
                 // call stored procedure to get all players for each team's roster for this week
                 using (SqlCommand command = new SqlCommand("GetTeamsForCurrentWeek", sqlConnection))
                 {
                     command.CommandType = System.Data.CommandType.StoredProcedure;
-                    log.LogInformation("Executing reader");
                     using (SqlDataReader reader = command.ExecuteReader())
                     {
-                        log.LogInformation("Reading SQL results");
                         while (reader.Read())
                         {
                             int season = (int)reader.GetValue(reader.GetOrdinal("Season"));
@@ -583,55 +572,33 @@
                                 //   - "Blocked Kick Recovered by JoJo Domann (IND), C.McLaughlin extra point is GOOD, Center-L.Rhodes, Holder-M.Haack."
                                 // 2. Pick six (text shows Interception Return)
                                 //   - "Julian Blackmon 17 Yd Interception Return, C.McLaughlin extra point is GOOD, Center-L.Rhodes, Holder-M.Haack."
-                                // 3. Fumble recovery for TD?
-                                // 4. Kick return?
+                                // 3. Punt return for a TD (text shows Punt Return)
+                                //   - "Calvin Austin III 73 Yd Pun Return (Chris Boswell Kick)"
+                                // 4. Fumble recovery for TD?
+                                // 5. Kick return?
                                 if (touchdownText.ToLower().Contains("blocked kick"))
                                 {
                                     PlayDetails playDetails = GetDefenseWhoScoredTouchdown(playByPlayJsonObject, scoringPlayToken, playersInGame);
 
-                                    // if this object isn't null, an owner has this defense, so send the text alert
-                                    if (playDetails != null)
-                                    {
-                                        // if this touchdown scored by this defense was not already parsed, the touchdown will be added
-                                        bool touchdownAdded = AddTouchdownDetails(espnGameId, quarter, gameClock, playDetails.PlayerName, playDetails.Season, playDetails.OwnerId, playDetails.OpponentAbbreviation, playDetails.GameDate, log);
+                                    string touchdownMessage = "🎉 Defensive Touchdown! " + playDetails.PlayerName + " blocked a kick and returned it for a TD!";
 
-                                        if (touchdownAdded)
-                                        {
-                                            playDetails.Message = "🎉 Defensive Touchdown! " + playDetails.PlayerName + " blocked a kick and returned it for a TD!";
-
-                                            log.LogInformation(playDetails.Message);
-                                            await sendPlayMessage(playDetails);//, configurationBuilder);
-                                        }
-                                        else
-                                        {
-                                            log.LogInformation("Did NOT log TD for " + playDetails.PlayerName + "; TD already parsed earlier.");
-                                        }
-                                    }
-
+                                    await SendDefensiveTouchdownMessage(espnGameId, playDetails, scoringPlayToken, playersInGame, quarter, gameClock, "", log);
                                 }
                                 else if (touchdownText.ToLower().Contains("interception return"))
                                 {
                                     PlayDetails playDetails = GetDefenseWhoScoredTouchdown(playByPlayJsonObject, scoringPlayToken, playersInGame);
 
-                                    // if this object isn't null, an owner has this defense, so send the text alert
-                                    if (playDetails != null)
-                                    {
-                                        // if this touchdown scored by this defense was not already parsed, the touchdown will be added
-                                        bool touchdownAdded = AddTouchdownDetails(espnGameId, quarter, gameClock, playDetails.PlayerName, playDetails.Season, playDetails.OwnerId, playDetails.OpponentAbbreviation, playDetails.GameDate, log);
+                                    string touchdownMessage = "🎉 Defensive Touchdown! " + playDetails.PlayerName + " just got a pick 6!";
 
-                                        if (touchdownAdded)
-                                        {
-                                            playDetails.Message = "🎉 Defensive Touchdown! " + playDetails.PlayerName + " just got a pick 6!";
+                                    await SendDefensiveTouchdownMessage(espnGameId, playDetails, scoringPlayToken, playersInGame, quarter, gameClock, "", log);
+                                }
+                                else if (touchdownText.ToLower().Contains("punt return"))
+                                {
+                                    PlayDetails playDetails = GetDefenseWhoScoredTouchdown(playByPlayJsonObject, scoringPlayToken, playersInGame);
 
-                                            log.LogInformation(playDetails.Message);
+                                    string touchdownMessage = "🎉 Defensive Touchdown! " + playDetails.PlayerName + " just returned a punt for a TD!";
 
-                                            await sendPlayMessage(playDetails);//, configurationBuilder);
-                                        }
-                                        else
-                                        {
-                                            log.LogInformation("Did NOT log TD for " + playDetails.PlayerName + "; TD already parsed earlier.");
-                                        }
-                                    }
+                                    await SendDefensiveTouchdownMessage(espnGameId, playDetails, scoringPlayToken, playersInGame, quarter, gameClock, "", log);
                                 }
                                 // it's an offensive TD
                                 else
@@ -745,6 +712,39 @@
                             }
                         }
                     }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Sends a text to the owner of the defense who scored a touchdown.
+        /// </summary>
+        /// <param name="espnGameId">Game ID of the game this defense if playing in</param>
+        /// <param name="playDetails">The details of the TD play</param>
+        /// <param name="scoringPlayToken">The scoring play JSON token</param>
+        /// <param name="playersInGame">List of the players in the game</param>
+        /// <param name="quarter">The querter the TD occurred</param>
+        /// <param name="gameClock">The time the TD occurred</param>
+        /// <param name="playMessage">The message to be sent</param>
+        private async Task SendDefensiveTouchdownMessage(int espnGameId, PlayDetails playDetails, JToken scoringPlayToken, List<PlayDetails> playersInGame, int quarter, string gameClock, string playMessage, ILogger log)
+        {
+            // if this object isn't null, an owner has this defense, so send the text alert
+            if (playDetails != null)
+            {
+                // if this touchdown scored by this defense was not already parsed, the touchdown will be added
+                bool touchdownAdded = AddTouchdownDetails(espnGameId, quarter, gameClock, playDetails.PlayerName, playDetails.Season, playDetails.OwnerId, playDetails.OpponentAbbreviation, playDetails.GameDate, log);
+
+                if (touchdownAdded)
+                {
+                    playDetails.Message = playMessage;
+
+                    log.LogInformation(playDetails.Message);
+
+                    await sendPlayMessage(playDetails);
+                }
+                else
+                {
+                    log.LogInformation("Did NOT log TD for " + playDetails.PlayerName + "; TD already parsed earlier.");
                 }
             }
         }
