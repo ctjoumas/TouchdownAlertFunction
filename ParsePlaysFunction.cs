@@ -55,17 +55,6 @@
             await parseTouchdownsAndBigPlays(gamesToParse, log);
         }
 
-        [Function("ParseTouchdownsTestSunday")]
-        public void RunTestSunday([TimerTrigger("*/10 * 7-23 * 9-12 1")] TimerInfo myTimer, FunctionContext context)
-        {
-            var log = context.GetLogger("ParseTouchdownsSunday");
-            log.LogInformation("C# HTTP trigger function processed a request for Sunday games at " + DateTime.Now);
-
-            //Hashtable gamesToParse = getGamesToParse(log);
-
-            //await parseTouchdownsAndBigPlays(gamesToParse, log);
-        }
-
         // The timer trigger should run every 10 seconds on Thursdays from 8-11:59pm, Sept-Jan
         // * * * * * *
         // {second} {minute} {hour} {day of month} {month} {day of week}
