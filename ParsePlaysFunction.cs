@@ -59,7 +59,12 @@
         public async Task RunTest([TimerTrigger("*/10 * 9-23 * 9-12 1")] TimerInfo myTimer, FunctionContext context)
         {
             var log = context.GetLogger("RunTest");
+            
             log.LogInformation("C# HTTP trigger function processed a request for Testing " + DateTime.Now);
+
+            Hashtable gamesToParse = new Hashtable();//getGamesToParse(log);
+
+            await parseTouchdownsAndBigPlays(gamesToParse, log);
         }
 
         // The timer trigger should run every 10 seconds on Thursdays from 8-11:59pm, Sept-Jan
