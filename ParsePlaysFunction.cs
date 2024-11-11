@@ -58,7 +58,7 @@
         [Function("TestTrigger")]
         public async Task RunTest([TimerTrigger("*/10 * 9-23 * 9-12 1")] TimerInfo myTimer, FunctionContext context)
         {
-            var log = context.GetLogger("RunTest");
+            var log = context.GetLogger("TestTrigger");
             
             log.LogInformation("C# HTTP trigger function processed a request for Testing " + DateTime.Now);
 
