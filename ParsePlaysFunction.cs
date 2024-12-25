@@ -89,6 +89,27 @@
             await parseTouchdownsAndBigPlays(gamesToParse, log);
         }
 
+        // The timer trigger should run every 10 seconds on Thursdays from 8-11:59pm, Sept-Jan
+        // * * * * * *
+        // {second} {minute} {hour} {day of month} {month} {day of week}
+        // for the trigger - */10 * 13 * 9-1 0 - each component is:
+        // {second} */10 is every 10 seconds
+        // {minute} 20 is at 20 minutes past the hour (thursday night games start at 8:20) - using *
+        // {hour} 13-21 is 1pm-9:59pm
+        // {day of the month} * is every day
+        // {month} 12 is Dec
+        // {day of week} 3 is Wednesday
+        [Function("ParseTouchdownsWednesday")]
+        public async Task RunWednesday([TimerTrigger("*/10 * 13-21 * 12 3")] TimerInfo myTimer, FunctionContext context)
+        {
+            var log = context.GetLogger("ParseTouchdownsWednesday");
+            log.LogInformation("C# HTTP trigger function processed a request for Wednesday games at " + DateTime.Now);
+
+            Hashtable gamesToParse = getGamesToParse(log);
+
+            await parseTouchdownsAndBigPlays(gamesToParse, log);
+        }
+
         // The timer trigger should run every 10 seconds on Saturdays from 1-11:59pm, Dec-Jan
         // * * * * * *
         // {second} {minute} {hour} {day of month} {month} {day of week}
