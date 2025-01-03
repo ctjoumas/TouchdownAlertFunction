@@ -28,6 +28,7 @@ jobs:
     - name: 'Login via Azure CLI'
       uses: azure/login@v1
       with:
+        auth-type: IDENTITY
         creds: ${{ secrets.AZURE_RBAC_CREDENTIALS }}
       
     - name: Setup DotNet ${{ env.DOTNET_VERSION }} Environment
