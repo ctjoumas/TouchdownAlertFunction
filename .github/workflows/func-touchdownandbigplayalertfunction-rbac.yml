@@ -20,16 +20,23 @@ env:
   
 jobs:
   build-and-deploy:
-    runs-on: windows-latest
+    #runs-on: windows-latest
+    runs-on: self-hosted
     steps:
     - name: 'Checkout GitHub Action'
       uses: actions/checkout@v3
 
-    - name: 'Login via Azure CLI'
-      uses: azure/login@v1
+    #- name: 'Login via Azure CLI'
+    #  uses: azure/login@v1
+    #  with:
+    #    creds: ${{ secrets.AZURE_RBAC_CREDENTIALS }}
+    - name: Azure login
+      uses: azure/login@v2
       with:
         auth-type: IDENTITY
-        creds: ${{ secrets.AZURE_RBAC_CREDENTIALS }}
+        tenant-id: ${{ secrets.TENANT_ID }}
+        subscription-id: ${{ secrets.SUBSCRIPTION_ID }}
+        enable-AzPSSession: true
       
     - name: Setup DotNet ${{ env.DOTNET_VERSION }} Environment
       uses: actions/setup-dotnet@v3
