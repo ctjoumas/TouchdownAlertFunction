@@ -45,7 +45,7 @@
         // {month} 9-1 is Sept-Jan
         // {day of week} 0 is Sunday
         [Function("ParseTouchdownsSunday")]
-        public async Task RunSunday([TimerTrigger("*/10 * 9-23 * 9-12 0")] TimerInfo myTimer, FunctionContext context)
+        public async Task RunSunday([TimerTrigger("*/10 * 9-23 * 9-1 0")] TimerInfo myTimer, FunctionContext context)
         {
             var log = context.GetLogger("ParseTouchdownsSunday");
             log.LogInformation("C# HTTP trigger function processed a request for Sunday games at " + DateTime.Now);
