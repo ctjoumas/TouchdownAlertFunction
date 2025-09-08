@@ -55,7 +55,7 @@ jobs:
       run: dotnet publish "${{ env.WORKING_DIRECTORY }}\PlayAlertFunction.csproj" --configuration ${{ env.CONFIGURATION }} --output "${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}" -v diag
       
     - name: Publish Artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: functionapp
         path: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
