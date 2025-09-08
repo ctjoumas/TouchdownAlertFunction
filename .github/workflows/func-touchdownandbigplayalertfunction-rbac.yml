@@ -21,7 +21,6 @@ env:
   
 jobs:
   build-and-deploy:
-    #runs-on: windows-latest
     runs-on: self-hosted
     steps:
     - name: 'Checkout GitHub Action'
