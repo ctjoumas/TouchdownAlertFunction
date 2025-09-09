@@ -81,5 +81,15 @@ jobs:
     #    package: '${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}'
     - name: 'Deploy to Azure Functions'
       run: |
-        cd ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
-        func azure functionapp publish ${{ env.AZURE_FUNCTIONAPP_NAME }} --dotnet --verbose
+        cd ./published
+        zip -r ../deployment.zip . -x "*.git*" "*.DS_Store*"
+        cd ..
+        
+        echo "Deploying to Azure Functions..."
+        az functionapp deployment source config-zip \
+          --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+          --name ${{ env.AZURE_FUNCTIONAPP_NAME }} \
+          --src deployment.zip \
+          --build-remote false \
+          --timeout 1800 \
+          --verbose
