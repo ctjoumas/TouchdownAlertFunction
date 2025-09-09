@@ -41,7 +41,7 @@ jobs:
         auth-type: IDENTITY
         tenant-id: ${{ secrets.TENANT_ID }}
         subscription-id: ${{ secrets.SUBSCRIPTION_ID }}
-        enable-AzPSSession: true
+        enable-AzPSSession: false
       
     - name: Setup DotNet ${{ env.DOTNET_VERSION }} Environment
       uses: actions/setup-dotnet@v4
@@ -65,13 +65,13 @@ jobs:
     #    name: functionapp
     #    path: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
 
-    - name: 'Install Azure Functions Core Tools'
-      run: |
-        # Install Azure Functions Core Tools via npm (now that npm is available)
-        sudo npm install -g azure-functions-core-tools@4 --unsafe-perm true
+    #- name: 'Install Azure Functions Core Tools'
+    #  run: |
+    #    # Install Azure Functions Core Tools via npm (now that npm is available)
+    #    sudo npm install -g azure-functions-core-tools@4 --unsafe-perm true
         
         # Verify installation
-        func --version
+    #    func --version
 
     #- name: 'Run Azure Functions Action'
     #  uses: Azure/functions-action@v1.5.2
