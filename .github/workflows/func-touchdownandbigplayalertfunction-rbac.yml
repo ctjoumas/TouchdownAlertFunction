@@ -73,7 +73,7 @@ jobs:
     #    package: '${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}'
     - name: 'Deploy to Azure Functions using Run From Package'
       run: |
-        cd ./publish
+        cd ./published
         zip -r ../deployment.zip .
         cd ..
         az functionapp deployment source config-zip \
