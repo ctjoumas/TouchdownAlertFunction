@@ -29,7 +29,7 @@ jobs:
 
     steps:
     - name: 'Checkout GitHub Action'
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     #- name: 'Login via Azure CLI'
     #  uses: azure/login@v1
@@ -44,7 +44,7 @@ jobs:
         enable-AzPSSession: true
       
     - name: Setup DotNet ${{ env.DOTNET_VERSION }} Environment
-      uses: actions/setup-dotnet@v3.0.1
+      uses: actions/setup-dotnet@v4
       with:
         dotnet-version: ${{ env.DOTNET_VERSION }}
         
@@ -59,11 +59,19 @@ jobs:
       #run: dotnet publish "${{ env.WORKING_DIRECTORY }}\PlayAlertFunction.csproj" --configuration ${{ env.CONFIGURATION }} --no-build --output "${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}"
       run: dotnet publish "${{ env.WORKING_DIRECTORY }}\PlayAlertFunction.csproj" --configuration ${{ env.CONFIGURATION }} --output "${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}" -v diag
       
-    - name: Publish Artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: functionapp
-        path: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
+    #- name: Publish Artifacts
+    #  uses: actions/upload-artifact@v4
+    #  with:
+    #    name: functionapp
+    #    path: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
+
+    - name: 'Install Azure Functions Core Tools'
+      run: |
+        # Install Azure Functions Core Tools via npm (now that npm is available)
+        sudo npm install -g azure-functions-core-tools@4 --unsafe-perm true
+        
+        # Verify installation
+        func --version
 
     #- name: 'Run Azure Functions Action'
     #  uses: Azure/functions-action@v1.5.2
@@ -73,8 +81,5 @@ jobs:
     #    package: '${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}'
     - name: 'Deploy to Azure Functions'
       run: |
-        # Install Azure Functions Core Tools if not already installed
-        npm install -g azure-functions-core-tools@4 --unsafe-perm true
-    
-        # Deploy using func azure functionapp publish
-        func azure functionapp publish ${{ env.AZURE_FUNCTIONAPP_NAME }} --dotnet
+        cd ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
+        func azure functionapp publish ${{ env.AZURE_FUNCTIONAPP_NAME }} --dotnet --verbose
