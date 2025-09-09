@@ -71,12 +71,13 @@ jobs:
     #  with:
     #    app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
     #    package: '${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}'
-    - name: Deploy to Azure Functions
+    - name: 'Deploy to Azure Functions using Run From Package'
       run: |
-        cd ./published
-        zip -r ../deploy.zip .
+        cd ./publish
+        zip -r ../deployment.zip .
         cd ..
         az functionapp deployment source config-zip \
-          --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-          --name ${{ env.AZURE_FUNCTIONAPP_NAME }} \
-          --src deploy.zip
+          --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+          --name ${{ secrets.AZURE_FUNCTIONAPP_NAME }} \
+          --src deployment.zip \
+          --build-remote true
