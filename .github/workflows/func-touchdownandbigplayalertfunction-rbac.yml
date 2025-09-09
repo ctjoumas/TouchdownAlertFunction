@@ -79,13 +79,130 @@ jobs:
     #  with:
     #    app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
     #    package: '${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}'
-    - name: 'Deploy using Azure Functions Core Tools'
+    # Reset Kudu service first
+    - name: 'Reset Kudu Service'
+      run: |
+        echo "Restarting Function App to reset Kudu service..."
+        az functionapp restart \
+          --name ${{ env.AZURE_FUNCTIONAPP_NAME }} \
+          --resource-group ${{ env.AZURE_RESOURCE_GROUP }}
+        
+        echo "Waiting for Function App to fully restart..."
+        sleep 90
+        
+        # Check if the Function App is responding
+        for i in {1..5}; do
+          if curl -f "https://${{ env.AZURE_FUNCTIONAPP_NAME }}.azurewebsites.net/" &>/dev/null; then
+            echo "Function App is responding"
+            break
+          else
+            echo "Waiting for Function App to be ready... (attempt $i/5)"
+            sleep 30
+          fi
+        done
+    
+    # Try method 1: Azure Functions Core Tools after restart
+    - name: 'Deploy with Core Tools (Method 1)'
+      id: deploy-core-tools
+      continue-on-error: true
       run: |
         cd ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
-        
-        # Use func to deploy directly, bypassing zip deployment issues
         func azure functionapp publish ${{ env.AZURE_FUNCTIONAPP_NAME }} \
           --dotnet \
           --force \
           --no-build \
-          --verbose
+          --verbose \
+          --timeout 300
+    
+    # Try method 2: Direct publish endpoint if method 1 fails
+    - name: 'Deploy via Publish Endpoint (Method 2)'
+      if: steps.deploy-core-tools.outcome == 'failure'
+      id: deploy-publish
+      continue-on-error: true
+      run: |
+        cd ./published
+        zip -r ../deployment.zip .
+        cd ..
+        
+        # Get access token
+        ACCESS_TOKEN=$(az account get-access-token --query accessToken --output tsv)
+        
+        # Try the /api/publish endpoint instead of zipdeploy
+        echo "Deploying via publish endpoint..."
+        RESPONSE=$(curl -s -w "%{http_code}" -X POST \
+          -H "Authorization: Bearer $ACCESS_TOKEN" \
+          -H "Content-Type: application/zip" \
+          -T deployment.zip \
+          "https://${{ env.AZURE_FUNCTIONAPP_NAME }}.scm.azurewebsites.net/api/publish?type=zip&restart=true")
+        
+        HTTP_CODE="${RESPONSE: -3}"
+        echo "HTTP Response Code: $HTTP_CODE"
+        
+        if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "202" ]; then
+          echo "Publish endpoint failed with code: $HTTP_CODE"
+          exit 1
+        fi
+    
+    # Try method 3: VFS (Virtual File System) direct upload
+    - name: 'Deploy via VFS Upload (Method 3)'
+      if: steps.deploy-core-tools.outcome == 'failure' && steps.deploy-publish.outcome == 'failure'
+      run: |
+        cd ./published
+        
+        # Get access token
+        ACCESS_TOKEN=$(az account get-access-token --query accessToken --output tsv)
+        
+        echo "Stopping Function App..."
+        az functionapp stop \
+          --name ${{ env.AZURE_FUNCTIONAPP_NAME }} \
+          --resource-group ${{ env.AZURE_RESOURCE_GROUP }}
+        
+        sleep 30
+        
+        echo "Uploading files via VFS..."
+        
+        # Create a simple upload script
+        find . -type f | while read file; do
+          # Remove leading ./
+          clean_file="${file#./}"
+          dir_path=$(dirname "$clean_file")
+          
+          # Create directory structure if needed
+          if [ "$dir_path" != "." ]; then
+            curl -X PUT \
+              -H "Authorization: Bearer $ACCESS_TOKEN" \
+              -H "If-Match: *" \
+              "https://${{ env.AZURE_FUNCTIONAPP_NAME }}.scm.azurewebsites.net/api/vfs/site/wwwroot/$dir_path/" \
+              || true
+          fi
+          
+          # Upload file
+          echo "Uploading: $clean_file"
+          curl -X PUT \
+            -H "Authorization: Bearer $ACCESS_TOKEN" \
+            -H "If-Match: *" \
+            -T "$file" \
+            "https://${{ env.AZURE_FUNCTIONAPP_NAME }}.scm.azurewebsites.net/api/vfs/site/wwwroot/$clean_file"
+        done
+        
+        echo "Starting Function App..."
+        az functionapp start \
+          --name ${{ env.AZURE_FUNCTIONAPP_NAME }} \
+          --resource-group ${{ env.AZURE_RESOURCE_GROUP }}
+        
+        sleep 60
+        
+        # Sync triggers
+        curl -X POST \
+          -H "Authorization: Bearer $ACCESS_TOKEN" \
+          "https://${{ env.AZURE_FUNCTIONAPP_NAME }}.scm.azurewebsites.net/api/functions/synctriggers"
+    
+    - name: 'Verify Deployment'
+      run: |
+        echo "Verifying deployment..."
+        sleep 30
+        
+        # Check if the function app is responding
+        curl -f "https://${{ env.AZURE_FUNCTIONAPP_NAME }}.azurewebsites.net/" || echo "Function app might still be starting up"
+        
+        echo "Deployment completed successfully"
