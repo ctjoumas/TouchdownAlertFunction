@@ -81,7 +81,7 @@ jobs:
          # Create Function App with .NET 8 isolated runtime
          az functionapp create \
            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-           --consumption-plan-location "East US" \
+           --consumption-plan-location "eastus" \
            --runtime dotnet-isolated \
            --runtime-version 8 \
            --functions-version 4 \
